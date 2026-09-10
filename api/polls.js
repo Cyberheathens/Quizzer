@@ -1,5 +1,9 @@
-const { sql, initDB } = require('../_db.cjs');
-const { fire } = require('../_pusher.cjs');
+import db from './_db.cjs';
+const { sql, initDB } = db;
+import pusherPkg from './_pusher.cjs';
+const { fire } = pusherPkg;
+
+
 
 function parseOptions(rows) {
   return rows.map((p) => ({
@@ -8,7 +12,7 @@ function parseOptions(rows) {
   }));
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {

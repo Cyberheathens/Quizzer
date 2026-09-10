@@ -1,11 +1,13 @@
-const { sql, initDB } = require('./_db.cjs');
+import db from './_db.cjs';
+const { sql, initDB } = db;
+
 
 function intervalFor(count, hasOpen) {
   if (hasOpen) return 5000;
   return count > 150 ? 30000 : 2500;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
