@@ -20,6 +20,8 @@ export interface Poll {
   timer_seconds: number | null;
   question_image: string | null;
   launched_at: string | null;
+  quiz_id: string | null;
+  order_index: number | null;
   created_at: string;
 }
 
@@ -49,6 +51,19 @@ export interface QAPost {
   is_answered: boolean;
   is_hidden: boolean;
   created_at: string;
+}
+
+export interface QuizInfo {
+  quiz_id: string;
+  title: string;
+  order_index: number;
+  total: number;
+}
+
+export interface QuizSnapshot {
+  quiz: { id: string; room_id: string; title: string; active_index: number | null; created_at: string };
+  questions: Poll[];
+  voteResults?: { optionIndex: number; count: number }[];
 }
 
 export interface RoomState {

@@ -1,4 +1,4 @@
-import type { Room, Poll, QAPost } from '@/types';
+import type { Room, Poll, QAPost, QuizSnapshot } from '@/types';
 
 const BASE = '/api';
 
@@ -77,7 +77,7 @@ export const getRoomState = (data: {
   sessionId: string;
   displayName?: string;
   includeDrafts?: boolean;
-}) => fetchJSON<{ participants: number; polls: Poll[]; qa: QAPost[]; intervalMs: number }>(`${BASE}/state`, { method: 'POST', body: JSON.stringify(data) });
+}) => fetchJSON<{ participants: number; polls: Poll[]; qa: QAPost[]; quizInfo: { quiz_id: string; title: string; order_index: number; total: number } | null; intervalMs: number }>(`${BASE}/state`, { method: 'POST', body: JSON.stringify(data) });
 
 export const roomAction = (code: string, action: 'open' | 'end') =>
   fetchJSON<Room>(`${BASE}/rooms`, { method: 'PATCH', body: JSON.stringify({ code, action }) });
@@ -95,3 +95,24 @@ export const updateDraftPoll = (data: {
 
 export const deletePoll = (pollId: string) =>
   fetchJSON<{ success: boolean }>(`${BASE}/polls?pollId=${pollId}`, { method: 'DELETE' });
+
+export const createQuiz = (data: {
+  roomId: string;
+  title: string;
+  questions: {
+    question: string;
+    questionImage?: string;
+    pollType?: 'single' | 'multi';
+    options: { text: string; isCorrect: boolean }[];
+    timerSeconds?: number | null;
+  }[];
+}) => fetchJSON<QuizSnapshot>(`${BASE}/quizzes`, { method: 'POST', body: JSON.stringify(data) });
+
+export const getQuizzes = (roomId: string) =>
+  fetchJSON<QuizSnapshot[]>(`${BASE}/quizzes?roomId=${roomId}`);
+
+export const quizAction = (quizId: string, action: 'launch' | 'lock' | 'reveal' | 'next' | 'delete') =>
+  fetchJSON<QuizSnapshot>(`${BASE}/quizzes`, { method: 'PATCH', body: JSON.stringify({ quizId, action }) });
+
+export const getLeaderboard = (quizId: string) =>
+  fetchJSON<{ leaderboard: { name: string; session_id: string; score: number }[]; totalQuestions: number }>(`${BASE}/leaderboard?quizId=${quizId}`);

@@ -65,7 +65,16 @@ exports.initDB = async function initDB() {
     )
   `;
 
-  await exports.sql`
+  await sql`CREATE TABLE IF NOT EXISTS quizzes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    active_index INT,
+    created_at TIMESTAMPTZ DEFAULT now()
+  )`;
+  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE`;
+  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS order_index INT`;
+await exports.sql`
     CREATE TABLE IF NOT EXISTS members (
       room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
       session_id TEXT NOT NULL,

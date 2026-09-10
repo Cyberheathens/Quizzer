@@ -13,6 +13,15 @@ await sql`CREATE TABLE IF NOT EXISTS qa_posts (id UUID PRIMARY KEY DEFAULT gen_r
 await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'`;
 await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS question_image TEXT`;
 await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS launched_at TIMESTAMPTZ`;
+await sql`CREATE TABLE IF NOT EXISTS quizzes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    active_index INT,
+    created_at TIMESTAMPTZ DEFAULT now()
+  )`;
+  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE`;
+  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS order_index INT`;
 await sql`CREATE TABLE IF NOT EXISTS members (room_id UUID REFERENCES rooms(id) ON DELETE CASCADE, session_id TEXT NOT NULL, display_name TEXT DEFAULT 'Anonymous', last_seen TIMESTAMPTZ DEFAULT now(), PRIMARY KEY (room_id, session_id))`;
 
 const t = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema='public'`;

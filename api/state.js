@@ -39,8 +39,16 @@ export default async function handler(req, res) {
       ),
       op AS (
         SELECT EXISTS(SELECT 1 FROM polls WHERE room_id = ${roomId} AND phase = 'voting_open') AS has_open
+      ),
+      qz AS (
+        SELECT row_to_json(qz_info) AS info FROM (
+          SELECT q.id AS quiz_id, q.title, p.order_index, (SELECT count(*)::int FROM polls WHERE quiz_id = q.id) AS total
+          FROM polls p JOIN quizzes q ON q.id = p.quiz_id
+          WHERE p.room_id = ${roomId} AND p.phase = 'voting_open'
+          LIMIT 1
+        ) qz_info
       )
-      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open FROM cnt, pls, qs, op
+      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open, qz.info AS quiz_info FROM cnt, pls, qs, op LEFT JOIN qz ON true
     `;
 
     const r = rows[0];
@@ -48,6 +56,7 @@ export default async function handler(req, res) {
       participants: r.participants,
       polls: r.polls,
       qa: r.qa,
+      quizInfo: r.quiz_info,
       intervalMs: intervalFor(r.participants, r.has_open),
     });
   }

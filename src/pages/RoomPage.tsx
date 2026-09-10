@@ -16,7 +16,7 @@ export default function RoomPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHost = location.pathname.endsWith('/host');
-  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setConnected } = useStore();
+  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setQuizInfo, setConnected } = useStore();
   const [loading, setLoading] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
 
@@ -70,6 +70,7 @@ export default function RoomPage() {
 
         setQAPosts(s.qa || []);
         setParticipantCount(s.participants);
+        setQuizInfo(s.quizInfo ?? null);
 
         if (s.polls) {
           setPolls(s.polls);

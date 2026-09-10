@@ -10,8 +10,9 @@ const COLORS = ['#ff8359', '#f3586c', '#e63e7a', '#ffb86b', '#f973a1', '#d83563'
 
 export default function StageView() {
   const { code } = useParams<{ code: string }>();
-  const { room, currentPoll, qaPosts, participantCount, voteResults } = useStore();
-  const [view, setView] = useState<'poll' | 'qa' | 'cloud' | 'qr'>('qr');
+  const { room, currentPoll, qaPosts, participantCount, quizInfo, voteResults } = useStore();
+  const [view, setView] = useState<'poll' | 'qa' | 'cloud' | 'qr' | 'board'>('qr');
+  const [board, setBoard] = useState<{ leaderboard: { name: string; score: number }[]; totalQuestions: number; _quizId?: string } | null>(null);
   const [now, setNow] = useState(Date.now());
 
   const deadline = currentPoll?.launched_at && currentPoll?.timer_seconds
@@ -20,6 +21,24 @@ export default function StageView() {
   const remaining = deadline && currentPoll?.phase === 'voting_open'
     ? Math.max(0, Math.ceil((deadline - now) / 1000))
     : null;
+  useEffect(() => {
+    if (view === 'board' && quizInfo && (!board || board._quizId !== quizInfo.quiz_id)) {
+      fetch(`/api/leaderboard?quizId=${quizInfo.quiz_id}`)
+        .then((r) => r.json())
+        .then((d) => setBoard({ ...d, _quizId: quizInfo.quiz_id }))
+        .catch(() => {});
+    }
+    if (view === 'board' && quizInfo) {
+      const t = setInterval(() => {
+        fetch(`/api/leaderboard?quizId=${quizInfo.quiz_id}`)
+          .then((r) => r.json())
+          .then((d) => setBoard({ ...d, _quizId: quizInfo.quiz_id }))
+          .catch(() => {});
+      }, 5000);
+      return () => clearInterval(t);
+    }
+  }, [view, quizInfo]);
+
   useEffect(() => {
     if (!deadline || currentPoll?.phase !== 'voting_open') return;
     const t = setInterval(() => setNow(Date.now()), 500);
@@ -82,6 +101,7 @@ export default function StageView() {
               { key: 'poll', label: 'Poll', icon: BarChart3 },
               { key: 'qa', label: 'Q&A', icon: MessageSquare },
               { key: 'cloud', label: 'Cloud', icon: Cloud },
+              { key: 'board', label: 'Board', icon: Trophy },
             ].map((v) => (
               <button
                 key={v.key}
@@ -106,6 +126,14 @@ export default function StageView() {
           </div>
         </div>
       </motion.header>
+
+      {/* Quiz banner */}
+      {quizInfo && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-4 py-3">
+          <span className="text-xl font-semibold text-flame">{quizInfo.title}</span>
+          <span className="chip">Question {quizInfo.order_index + 1} / {quizInfo.total}</span>
+        </motion.div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-8">
@@ -301,6 +329,36 @@ export default function StageView() {
                   <h2 className="text-3xl font-bold mb-2">Word Cloud</h2>
                   <p className="text-xl text-text-secondary">Words from audience questions will form here</p>
                 </div>
+              )}
+            </motion.div>
+          )}
+
+          {view === 'board' && (
+            <motion.div key="board" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-2xl">
+              <Trophy className="w-14 h-14 text-amber mx-auto mb-4" />
+              <h2 className="text-4xl font-bold text-center mb-8">Leaderboard</h2>
+              {board && board.leaderboard.length > 0 ? (
+                <div className="space-y-2">
+                  {board.leaderboard.slice(0, 10).map((row, i) => (
+                    <motion.div
+                      key={row.name + i}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: i * 0.06 }}
+                      className={`panel rounded-xl px-6 py-3 flex items-center justify-between ${i === 0 ? 'border-flame/60' : ''}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className={`text-xl font-bold font-mono w-8 ${i === 0 ? 'text-flame' : i === 1 ? 'text-text-secondary' : i === 2 ? 'text-amber' : 'text-text-muted'}`}>
+                          {i + 1}
+                        </span>
+                        <span className="text-lg font-semibold">{row.name}</span>
+                      </div>
+                      <span className={`text-2xl font-bold font-mono ${i === 0 ? 'text-ramp' : 'text-text-secondary'}`}>{row.score}/{board.totalQuestions}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-text-secondary text-xl">No scores yet — finish a question first</p>
               )}
             </motion.div>
           )}

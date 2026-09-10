@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Plus, Play, Eye, EyeOff, Pin, CheckCircle2, MessageSquare,
-  BarChart3, Users, Settings, Trash2, ArrowLeft, Monitor, Copy, Check,
+  BarChart3, Users, Settings, Trash2, ArrowLeft, Monitor, Copy, Check, Trophy,
   Timer, XCircle, ImageIcon, Rocket, Lock, Pencil, DoorOpen, DoorClosed,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { createPoll, updatePollPhase, updateQAPost, launchPoll, updateDraftPoll, deletePoll, roomAction } from '@/lib/api';
+import { createPoll, updatePollPhase, updateQAPost, launchPoll, updateDraftPoll, deletePoll, roomAction, createQuiz, getQuizzes, quizAction } from '@/lib/api';
+import type { QuizSnapshot } from '@/types';
 import toast from 'react-hot-toast';
 
-type HostTab = 'polls' | 'qa' | 'settings';
+type HostTab = 'polls' | 'quiz' | 'qa' | 'settings';
 
 interface DraftForm {
   id: string | null;
@@ -20,6 +21,8 @@ interface DraftForm {
   pollType: 'single' | 'multi';
   timer: number | null;
 }
+
+const emptyQ = () => ({ question: '', imageUrl: '', pollType: 'single' as const, options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }], timer: null as number | null });
 
 const EMPTY_FORM: DraftForm = {
   id: null,
@@ -39,9 +42,69 @@ export default function HostView() {
   const [form, setForm] = useState<DraftForm>(EMPTY_FORM);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [quizzes, setQuizzes] = useState<QuizSnapshot[]>([]);
+  const [quizForm, setQuizForm] = useState<{
+    title: string;
+    questions: { question: string; imageUrl: string; pollType: 'single' | 'multi'; options: { text: string; isCorrect: boolean }[]; timer: number | null }[];
+  } | null>(null);
+  const [quizBusy, setQuizBusy] = useState(false);
 
-  const drafts = polls.filter((p) => p.phase === 'draft');
-  const live = polls.filter((p) => p.phase !== 'draft');
+  const loadQuizzes = () => {
+    if (room) getQuizzes(room.id).then(setQuizzes).catch(() => {});
+  };
+
+  React.useEffect(() => {
+    loadQuizzes();
+  }, [room?.id]);
+
+  const handleCreateQuiz = async () => {
+    if (!room || !quizForm) return;
+    const clean = quizForm.questions.filter((q) => q.question.trim() && q.options.filter((o) => o.text.trim()).length >= 2);
+    if (!quizForm.title.trim() || clean.length === 0) {
+      toast.error('Need a title and at least 1 complete question');
+      return;
+    }
+    setQuizBusy(true);
+    try {
+      await createQuiz({
+        roomId: room.id,
+        title: quizForm.title.trim(),
+        questions: clean.map((q) => ({
+          question: q.question.trim(),
+          questionImage: q.imageUrl.trim() || undefined,
+          pollType: q.pollType,
+          options: q.options.filter((o) => o.text.trim()),
+          timerSeconds: q.timer,
+        })),
+      });
+      toast.success('Quiz saved — launch Q1 when ready');
+      setQuizForm(null);
+      loadQuizzes();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save quiz');
+    } finally {
+      setQuizBusy(false);
+    }
+  };
+
+  const handleQuizAction = async (quizId: string, action: 'launch' | 'lock' | 'reveal' | 'next' | 'delete') => {
+    try {
+      if (action === 'delete' && !window.confirm('Delete this quiz?')) return;
+      await quizAction(quizId, action);
+      const labels: Record<string, string> = {
+        launch: 'Quiz launched — Q1 is LIVE!',
+        lock: 'Question locked',
+        reveal: 'Results shown',
+        next: 'Next question is LIVE!',
+      };
+      if (labels[action]) toast.success(labels[action]);
+      loadQuizzes();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed');
+    }
+  };
+  const drafts = polls.filter((p) => p.phase === 'draft' && !p.quiz_id);
+  const live = polls.filter((p) => p.phase !== 'draft' && !p.quiz_id);
   const roomClosed = room?.status !== 'open';
 
   const roomUrl = `${window.location.origin}/room/${code}`;
@@ -194,7 +257,8 @@ export default function HostView() {
   };
 
   const tabs: { key: HostTab; label: string; icon: any; count?: number }[] = [
-    { key: 'polls', label: 'Polls', icon: BarChart3, count: live.length },
+    { key: 'polls', label: 'Polls', icon: BarChart3, count: live.filter((p) => !p.quiz_id).length },
+    { key: 'quiz', label: 'Quiz', icon: Trophy },
     { key: 'qa', label: 'Q&A', icon: MessageSquare, count: qaPosts.length },
     { key: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -574,6 +638,184 @@ export default function HostView() {
                       </div>
                     </motion.div>
                   ))
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'quiz' && (
+            <motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">Quizzes</h2>
+                <button
+                  onClick={() => setQuizForm({ title: '', questions: [emptyQ()] })}
+                  className="btn-solid px-4 py-2.5 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Quiz
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {quizForm && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-4">
+                    <div className="glass rounded-2xl p-5">
+                      <h3 className="font-bold mb-3">Build Quiz</h3>
+                      <input
+                        type="text"
+                        placeholder="Quiz title (e.g. CS Championship Round)"
+                        value={quizForm.title}
+                        onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-bg-primary text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-coral/50 mb-4 transition-all"
+                      />
+                      <div className="space-y-4">
+                        {quizForm.questions.map((q, qi) => (
+                          <div key={qi} className="panel rounded-xl p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-flame">QUESTION {qi + 1}</span>
+                              {quizForm.questions.length > 1 && (
+                                <button onClick={() => setQuizForm({ ...quizForm, questions: quizForm.questions.filter((_, i) => i !== qi) })} className="p-1 rounded hover:text-magenta text-text-muted transition-colors">
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Question text..."
+                              value={q.question}
+                              onChange={(e) => {
+                                const qs = [...quizForm.questions];
+                                qs[qi].question = e.target.value;
+                                setQuizForm({ ...quizForm, questions: quizForm.questions });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg bg-bg-primary text-sm mb-2"
+                            />
+                            <input
+                              type="url"
+                              placeholder="Image/GIF URL (optional)"
+                              value={q.imageUrl}
+                              onChange={(e) => {
+                                const qs2 = [...quizForm.questions];
+                                qs2[qi].imageUrl = e.target.value;
+                                setQuizForm({ ...quizForm, questions: qs2 });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg bg-bg-primary text-sm font-mono mb-2"
+                            />
+                            {q.imageUrl.trim() && (
+                              <img src={q.imageUrl} alt="" className="max-h-28 rounded-lg mx-auto mb-2 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            )}
+                            <div className="flex gap-2 mb-2">
+                              <button onClick={() => { const qs2 = [...quizForm.questions]; qs2[qi].pollType = 'single'; setQuizForm({ ...quizForm, questions: qs2 }); }} className={`px-2 py-1 rounded text-xs ${q.pollType === 'single' ? 'bg-coral/20 text-coral' : 'bg-bg-elevated text-text-muted'}`}>Single</button>
+                              <button onClick={() => { const qs2 = [...quizForm.questions]; qs2[qi].pollType = 'multi'; setQuizForm({ ...quizForm, questions: qs2 }); }} className={`px-2 py-1 rounded text-xs ${q.pollType === 'multi' ? 'bg-coral/20 text-coral' : 'bg-bg-elevated text-text-muted'}`}>Multi</button>
+                              <select value={q.timer || ''} onChange={(e) => { const qs2 = [...quizForm.questions]; qs2[qi].timer = e.target.value ? Number(e.target.value) : null; setQuizForm({ ...quizForm, questions: qs2 }); }} className="px-2 py-1 rounded bg-bg-primary text-xs">
+                                <option value="">No timer</option>
+                                <option value="10">10s</option>
+                                <option value="20">20s</option>
+                                <option value="30">30s</option>
+                                <option value="60">60s</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1.5">
+                              {q.options.map((opt, oi) => (
+                                <div key={oi} className="flex gap-1.5">
+                                  <input
+                                    type="text"
+                                    placeholder={`Option ${oi + 1}`}
+                                    value={opt.text}
+                                    onChange={(e) => {
+                                      const qs2 = [...quizForm.questions];
+                                      qs2[qi].options[oi].text = e.target.value;
+                                      setQuizForm({ ...quizForm, questions: qs2 });
+                                    }}
+                                    className="flex-1 px-2 py-1.5 rounded bg-bg-primary text-sm"
+                                  />
+                                  <button onClick={() => { const qs2 = [...quizForm.questions]; qs2[qi].options[oi].isCorrect = !qs2[qi].options[oi].isCorrect; setQuizForm({ ...quizForm, questions: qs2 }); }} className={`p-1.5 rounded ${opt.isCorrect ? 'bg-ok/20 text-ok' : 'bg-bg-elevated text-text-muted'}`}>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                              {q.options.length < 8 && (
+                                <button onClick={() => { const qs2 = [...quizForm.questions]; qs2[qi].options.push({ text: '', isCorrect: false }); setQuizForm({ ...quizForm, questions: qs2 }); }} className="w-full py-1 text-xs text-text-muted border border-dashed border-border rounded hover:border-coral/50">+ option</button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => setQuizForm({ ...quizForm, questions: [...quizForm.questions, { question: '', imageUrl: '', pollType: 'single', options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }], timer: null }] })}
+                          className="w-full py-2 rounded-lg border border-dashed border-border text-text-muted text-sm hover:border-coral/50 transition-all"
+                        >
+                          + Add Question ({quizForm.questions.length})
+                        </button>
+                      </div>
+                      <div className="flex gap-2 mt-4">
+                        <button onClick={() => setQuizForm(null)} className="btn-ghost px-4 py-2.5 text-sm flex-1">Cancel</button>
+                        <button onClick={handleCreateQuiz} disabled={quizBusy} className="btn-solid px-4 py-2.5 text-sm flex-1">Save Quiz</button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Quiz list */}
+              <div className="space-y-3">
+                {quizzes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Trophy className="w-10 h-10 text-text-muted mx-auto mb-2" />
+                    <p className="text-text-secondary text-sm">No quizzes yet</p>
+                    <p className="text-xs text-text-muted">Build a multi-question quiz, launch Q1, then advance manually</p>
+                  </div>
+                ) : (
+                  quizzes.map((snap) => {
+                    const launched = snap.quiz.active_index !== null && snap.quiz.active_index !== undefined;
+                    const current = launched ? snap.questions[snap.quiz.active_index!] : null;
+                    return (
+                      <div key={snap.quiz.id} className="glass rounded-xl p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">{snap.quiz.title}</h3>
+                              {launched ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-ok/20 text-ok">Q{snap.quiz.active_index! + 1}/{snap.questions.length}</span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-bg-elevated text-text-secondary">Draft</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-text-muted mt-0.5">{snap.questions.length} questions · current: {current ? current.phase.replace('voting_', '').replace('_', ' ') : 'not launched'}</p>
+                          </div>
+                          <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+                            {!launched && (
+                              <>
+                                <button onClick={() => { if (window.confirm('Delete quiz?')) handleQuizAction(snap.quiz.id, 'delete'); }} className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-magenta transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => handleQuizAction(snap.quiz.id, 'launch')} className="btn-solid px-3 py-2 text-xs"><Rocket className="w-3 h-3" />Launch Q1</button>
+                              </>
+                            )}
+                            {launched && (
+                              <>
+                                {current?.phase === 'voting_open' && (
+                                  <button onClick={() => handleQuizAction(snap.quiz.id, 'lock')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-amber/20 text-amber text-xs font-medium"><Lock className="w-3 h-3" />Lock</button>
+                                )}
+                                {current?.phase === 'voting_locked' && (
+                                  <button onClick={() => handleQuizAction(snap.quiz.id, 'reveal')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-coral/20 text-coral text-xs font-medium"><Eye className="w-3 h-3" />Reveal</button>
+                                )}
+                                {current && current.phase !== 'voting_open' && snap.quiz.active_index! + 1 < snap.questions.length && (
+                                  <button onClick={() => handleQuizAction(snap.quiz.id, 'next')} className="btn-solid px-3 py-2 text-xs"><Play className="w-3 h-3" />Next Q</button>
+                                )}
+                                {snap.quiz.active_index! + 1 >= snap.questions.length && current?.phase !== 'voting_open' && (
+                                  <span className="chip !py-1.5">Quiz complete</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* progress dots */}
+                        <div className="flex gap-1 mt-3">
+                          {snap.questions.map((q, i) => (
+                            <div key={q.id} title={q.question} className={`h-1.5 flex-1 rounded-full ${launched && i < snap.quiz.active_index! ? 'bg-ok/60' : launched && i === snap.quiz.active_index ? 'bg-ramp-x' : 'bg-bg-elevated'}`} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </motion.div>

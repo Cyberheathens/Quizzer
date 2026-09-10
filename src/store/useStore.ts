@@ -11,6 +11,7 @@ interface AppStore {
   displayName: string;
   isConnected: boolean;
   participantCount: number;
+  quizInfo: { quiz_id: string; title: string; order_index: number; total: number } | null;
   hasVoted: Record<string, boolean>;
   voteResults: Record<string, { optionIndex: number; count: number }[]>;
 
@@ -24,6 +25,7 @@ interface AppStore {
   updateQAPost: (post: QAPost) => void;
   setConnected: (connected: boolean) => void;
   setParticipantCount: (count: number) => void;
+  setQuizInfo: (info: { quiz_id: string; title: string; order_index: number; total: number } | null) => void;
   markVoted: (pollId: string) => void;
   setVoteResults: (pollId: string, results: { optionIndex: number; count: number }[]) => void;
   setDisplayName: (name: string) => void;
@@ -39,6 +41,7 @@ export const useStore = create<AppStore>((set) => ({
   displayName: getDisplayName(),
   isConnected: false,
   participantCount: 0,
+  quizInfo: null,
   hasVoted: {},
   voteResults: {},
 
@@ -59,6 +62,7 @@ export const useStore = create<AppStore>((set) => ({
     })),
   setConnected: (connected) => set({ isConnected: connected }),
   setParticipantCount: (count) => set({ participantCount: count }),
+  setQuizInfo: (quizInfo) => set({ quizInfo }),
   markVoted: (pollId) => set((s) => ({ hasVoted: { ...s.hasVoted, [pollId]: true } })),
   setVoteResults: (pollId, results) =>
     set((s) => ({ voteResults: { ...s.voteResults, [pollId]: results } })),
@@ -71,6 +75,7 @@ export const useStore = create<AppStore>((set) => ({
       qaPosts: [],
       isConnected: false,
       participantCount: 0,
+      quizInfo: null,
       hasVoted: {},
       voteResults: {},
     }),
