@@ -14,7 +14,7 @@ interface VotingCardProps {
   showResults: boolean;
 }
 
-const COLORS = ['#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
+const COLORS = ['#ff8359', '#f3586c', '#e63e7a', '#ffb86b', '#f973a1', '#d83563', '#ff6b9d', '#c22e57'];
 
 export default function VotingCard({
   poll,
@@ -61,11 +61,11 @@ export default function VotingCard({
       {/* Question Header */}
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-purple/20 text-accent-purple font-medium">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-coral/20 text-coral font-medium">
             {poll.poll_type === 'multi' ? 'Multi-Select' : 'Single Choice'}
           </span>
           {poll.phase === 'voting_locked' && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-accent-orange/20 text-accent-orange">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber/20 text-amber">
               Closed
             </span>
           )}
@@ -84,14 +84,14 @@ export default function VotingCard({
                 onClick={() => toggleOption(i)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
                   selectedOptions.includes(i)
-                    ? 'bg-accent-purple/20 border border-accent-purple/50 glow-purple'
+                    ? 'bg-coral/20 border border-coral/50 glow-ramp'
                     : 'glass hover:bg-bg-card-hover'
                 }`}
               >
                 <div
                   className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
                     selectedOptions.includes(i)
-                      ? 'bg-accent-purple text-white'
+                      ? 'bg-ramp text-white'
                       : 'bg-bg-secondary text-text-muted'
                   }`}
                 >
@@ -99,7 +99,7 @@ export default function VotingCard({
                 </div>
                 <span className="flex-1 text-sm">{opt.text}</span>
                 {selectedOptions.includes(i) && (
-                  <Check className="w-4 h-4 text-accent-purple" />
+                  <Check className="w-4 h-4 text-coral" />
                 )}
               </motion.button>
             ))}
@@ -108,7 +108,7 @@ export default function VotingCard({
               <button
                 onClick={onVote}
                 disabled={selectedOptions.length === 0}
-                className="w-full mt-3 px-4 py-3 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-purple"
+                className="w-full mt-3 px-4 py-3 rounded-xl bg-ramp-x text-[#14060e] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-ramp"
               >
                 Submit Vote
               </button>
@@ -121,7 +121,7 @@ export default function VotingCard({
               <button
                 onClick={() => setChartType('bar')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  chartType === 'bar' ? 'bg-accent-purple/20 text-accent-purple' : 'text-text-muted'
+                  chartType === 'bar' ? 'bg-coral/20 text-coral' : 'text-text-muted'
                 }`}
               >
                 Bar
@@ -129,7 +129,7 @@ export default function VotingCard({
               <button
                 onClick={() => setChartType('pie')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  chartType === 'pie' ? 'bg-accent-purple/20 text-accent-purple' : 'text-text-muted'
+                  chartType === 'pie' ? 'bg-coral/20 text-coral' : 'text-text-muted'
                 }`}
               >
                 Pie
@@ -146,10 +146,10 @@ export default function VotingCard({
                       type="category"
                       dataKey="name"
                       width={80}
-                      tick={{ fill: '#94a3b8', fontSize: 12 }}
+                      tick={{ fill: '#a393a0', fontSize: 12 }}
                     />
                     <Tooltip
-                      contentStyle={{ background: '#1a1a2e', border: '1px solid #2a2a3e', borderRadius: 12 }}
+                      contentStyle={{ background: '#150d1d', border: '1px solid rgb(255 240 236 / 10%)', borderRadius: 12 }}
                       labelStyle={{ color: '#f1f5f9' }}
                       formatter={(value: number) => [`${value} votes`, '']}
                     />
@@ -187,7 +187,7 @@ export default function VotingCard({
                   <div className="w-3 h-3 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
                   <span className="flex-1 truncate">{d.name}</span>
                   {showResults && d.isCorrect && (
-                    <Check className="w-4 h-4 text-accent-green" />
+                    <Check className="w-4 h-4 text-ok" />
                   )}
                   <span className="font-mono text-text-secondary">{d.percentage}%</span>
                 </div>

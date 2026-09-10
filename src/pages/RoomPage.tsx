@@ -77,7 +77,7 @@ export default function RoomPage() {
           animate={{ scale: 1, opacity: 1 }}
           className="text-center"
         >
-          <div className="w-12 h-12 border-3 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-12 h-12 border-2 border-coral/30 border-t-coral rounded-full animate-spin mx-auto mb-4" />
           <p className="text-text-secondary">Connecting...</p>
         </motion.div>
       </div>

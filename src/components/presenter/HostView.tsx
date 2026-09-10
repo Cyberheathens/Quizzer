@@ -98,7 +98,7 @@ export default function HostView() {
             </button>
             <div>
               <h1 className="font-bold text-sm flex items-center gap-2">
-                <Settings className="w-4 h-4 text-accent-purple" />
+                <Settings className="w-4 h-4 text-coral" />
                 Host Console
               </h1>
               <p className="text-xs text-text-muted">{room?.name}</p>
@@ -106,19 +106,19 @@ export default function HostView() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-bg-secondary text-xs">
-              <Users className="w-3 h-3 text-accent-cyan" />
+              <Users className="w-3 h-3 text-flame" />
               <span className="font-bold">{participantCount}</span>
             </div>
             <button
               onClick={copyLink}
               className="flex items-center gap-1 px-2 py-1 rounded-lg bg-bg-secondary text-xs hover:bg-bg-card-hover transition-colors"
             >
-              {copied ? <Check className="w-3 h-3 text-accent-green" /> : <Copy className="w-3 h-3" />}
+              {copied ? <Check className="w-3 h-3 text-ok" /> : <Copy className="w-3 h-3" />}
               <span className="font-mono">{code}</span>
             </button>
             <button
               onClick={() => window.open(`/room/${code}/stage`, '_blank')}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent-purple/20 text-accent-purple text-xs font-medium hover:bg-accent-purple/30 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-coral/20 text-coral text-xs font-medium hover:bg-coral/30 transition-colors"
             >
               <Monitor className="w-3 h-3" />
               Stage
@@ -134,7 +134,7 @@ export default function HostView() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeTab === tab.key
-                  ? 'bg-accent-purple/20 text-accent-purple'
+                  ? 'bg-coral/20 text-coral'
                   : 'text-text-muted hover:text-text-secondary'
               }`}
             >
@@ -157,7 +157,7 @@ export default function HostView() {
                 <h2 className="text-lg font-bold">Polls</h2>
                 <button
                   onClick={() => setShowCreatePoll(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white text-sm font-medium hover:opacity-90 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ramp-x text-[#14060e] text-sm font-medium hover:opacity-90 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   New Poll
@@ -180,7 +180,7 @@ export default function HostView() {
                         <button
                           onClick={() => setPollType('single')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                            pollType === 'single' ? 'bg-accent-purple/20 text-accent-purple' : 'bg-bg-secondary text-text-muted'
+                            pollType === 'single' ? 'bg-coral/20 text-coral' : 'bg-bg-secondary text-text-muted'
                           }`}
                         >
                           Single Choice
@@ -188,7 +188,7 @@ export default function HostView() {
                         <button
                           onClick={() => setPollType('multi')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                            pollType === 'multi' ? 'bg-accent-purple/20 text-accent-purple' : 'bg-bg-secondary text-text-muted'
+                            pollType === 'multi' ? 'bg-coral/20 text-coral' : 'bg-bg-secondary text-text-muted'
                           }`}
                         >
                           Multi-Select
@@ -200,7 +200,7 @@ export default function HostView() {
                         placeholder="Your question..."
                         value={question}
                         onChange={(e) => setQuestion(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl bg-bg-primary text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-purple/50 mb-3 transition-all"
+                        className="w-full px-4 py-3 rounded-xl bg-bg-primary text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-coral/50 mb-3 transition-all"
                       />
 
                       <div className="space-y-2 mb-3">
@@ -215,7 +215,7 @@ export default function HostView() {
                                 newOpts[i].text = e.target.value;
                                 setOptions(newOpts);
                               }}
-                              className="flex-1 px-3 py-2 rounded-lg bg-bg-primary text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-purple/50 transition-all"
+                              className="flex-1 px-3 py-2 rounded-lg bg-bg-primary text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-coral/50 transition-all"
                             />
                             <button
                               onClick={() => {
@@ -224,7 +224,7 @@ export default function HostView() {
                                 setOptions(newOpts);
                               }}
                               className={`p-2 rounded-lg transition-all ${
-                                opt.isCorrect ? 'bg-accent-green/20 text-accent-green' : 'bg-bg-secondary text-text-muted'
+                                opt.isCorrect ? 'bg-ok/20 text-ok' : 'bg-bg-secondary text-text-muted'
                               }`}
                               title="Mark as correct answer"
                             >
@@ -233,7 +233,7 @@ export default function HostView() {
                             {options.length > 2 && (
                               <button
                                 onClick={() => setOptions(options.filter((_, idx) => idx !== i))}
-                                className="p-2 rounded-lg bg-bg-secondary text-text-muted hover:text-accent-red transition-colors"
+                                className="p-2 rounded-lg bg-bg-secondary text-text-muted hover:text-magenta transition-colors"
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>
@@ -243,7 +243,7 @@ export default function HostView() {
                         {options.length < 8 && (
                           <button
                             onClick={() => setOptions([...options, { text: '', isCorrect: false }])}
-                            className="w-full py-2 rounded-lg border border-dashed border-border text-text-muted text-sm hover:border-accent-purple/50 transition-all"
+                            className="w-full py-2 rounded-lg border border-dashed border-border text-text-muted text-sm hover:border-coral/50 transition-all"
                           >
                             + Add Option
                           </button>
@@ -255,7 +255,7 @@ export default function HostView() {
                         <select
                           value={timer || ''}
                           onChange={(e) => setTimer(e.target.value ? Number(e.target.value) : null)}
-                          className="px-3 py-1.5 rounded-lg bg-bg-primary text-text-primary text-sm focus:outline-none focus:ring-1 focus:ring-accent-purple/50"
+                          className="px-3 py-1.5 rounded-lg bg-bg-primary text-text-primary text-sm focus:outline-none focus:ring-1 focus:ring-coral/50"
                         >
                           <option value="">No timer</option>
                           <option value="10">10 seconds</option>
@@ -274,7 +274,7 @@ export default function HostView() {
                         </button>
                         <button
                           onClick={handleCreatePoll}
-                          className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white text-sm font-semibold hover:opacity-90 transition-all"
+                          className="flex-1 px-4 py-2 rounded-xl bg-ramp-x text-[#14060e] text-sm font-semibold hover:opacity-90 transition-all"
                         >
                           Create Poll
                         </button>
@@ -301,7 +301,7 @@ export default function HostView() {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-purple/20 text-accent-purple">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-coral/20 text-coral">
                             {poll.phase === 'voting_open' ? 'Voting Open' : poll.phase === 'voting_locked' ? 'Locked' : 'Results Shown'}
                           </span>
                           <h3 className="font-semibold mt-1">{poll.question}</h3>
@@ -312,7 +312,7 @@ export default function HostView() {
                         {poll.phase === 'voting_open' && (
                           <button
                             onClick={() => handlePhaseChange(poll.id, 'voting_locked')}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent-orange/20 text-accent-orange text-xs font-medium hover:bg-accent-orange/30 transition-all"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber/20 text-amber text-xs font-medium hover:bg-amber/30 transition-all"
                           >
                             <Lock className="w-3 h-3" />
                             Close Voting
@@ -321,7 +321,7 @@ export default function HostView() {
                         {poll.phase === 'voting_locked' && (
                           <button
                             onClick={() => handlePhaseChange(poll.id, 'results_shown')}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent-green/20 text-accent-green text-xs font-medium hover:bg-accent-green/30 transition-all"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-ok/20 text-ok text-xs font-medium hover:bg-ok/30 transition-all"
                           >
                             <Eye className="w-3 h-3" />
                             Show Results
@@ -361,28 +361,28 @@ export default function HostView() {
                               {post.is_anonymous ? 'Anonymous' : post.display_name}
                             </span>
                             <span className="text-xs text-text-muted">▲ {post.upvotes}</span>
-                            {post.is_pinned && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-yellow/20 text-accent-yellow">Pinned</span>}
-                            {post.is_answering && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-green/20 text-accent-green">Answering</span>}
-                            {post.is_answered && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">Answered</span>}
+                            {post.is_pinned && <span className="text-xs px-1.5 py-0.5 rounded bg-flame/20 text-flame">Pinned</span>}
+                            {post.is_answering && <span className="text-xs px-1.5 py-0.5 rounded bg-ok/20 text-ok">Answering</span>}
+                            {post.is_answered && <span className="text-xs px-1.5 py-0.5 rounded bg-flame/20 text-flame">Answered</span>}
                           </div>
                         </div>
                         <div className="flex gap-1 ml-2">
                           {!post.is_pinned && (
-                            <button onClick={() => handleQAAction(post.id, 'pin')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-accent-yellow transition-all" title="Pin">
+                            <button onClick={() => handleQAAction(post.id, 'pin')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-flame transition-all" title="Pin">
                               <Pin className="w-3.5 h-3.5" />
                             </button>
                           )}
                           {!post.is_answering && !post.is_answered && (
-                            <button onClick={() => handleQAAction(post.id, 'answering')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-accent-green transition-all" title="Mark as Answering">
+                            <button onClick={() => handleQAAction(post.id, 'answering')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-ok transition-all" title="Mark as Answering">
                               <Play className="w-3.5 h-3.5" />
                             </button>
                           )}
                           {!post.is_answered && (
-                            <button onClick={() => handleQAAction(post.id, 'answered')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-accent-cyan transition-all" title="Mark as Answered">
+                            <button onClick={() => handleQAAction(post.id, 'answered')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-flame transition-all" title="Mark as Answered">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => handleQAAction(post.id, 'hide')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-accent-red transition-all" title="Hide">
+                          <button onClick={() => handleQAAction(post.id, 'hide')} className="p-1.5 rounded-lg hover:bg-bg-secondary text-text-muted hover:text-magenta transition-all" title="Hide">
                             {post.is_hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                           </button>
                         </div>
@@ -400,14 +400,14 @@ export default function HostView() {
               <div className="glass rounded-2xl p-5 space-y-4">
                 <div>
                   <label className="text-sm text-text-secondary">Room Code</label>
-                  <p className="font-mono text-xl font-bold text-gradient">{code}</p>
+                  <p className="font-mono text-xl font-bold text-ramp">{code}</p>
                 </div>
                 <div>
                   <label className="text-sm text-text-secondary">Room URL</label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="flex-1 px-3 py-2 rounded-lg bg-bg-primary text-xs text-text-muted truncate font-mono">{roomUrl}</code>
                     <button onClick={copyLink} className="p-2 rounded-lg bg-bg-secondary hover:bg-bg-card-hover transition-all">
-                      {copied ? <Check className="w-4 h-4 text-accent-green" /> : <Copy className="w-4 h-4 text-text-muted" />}
+                      {copied ? <Check className="w-4 h-4 text-ok" /> : <Copy className="w-4 h-4 text-text-muted" />}
                     </button>
                   </div>
                 </div>
@@ -423,7 +423,7 @@ export default function HostView() {
 
       {/* Footer */}
       <footer className="text-center py-2 text-text-muted text-xs glass border-t border-border">
-        Made by <span className="font-bold text-gradient">CyberHeathens</span>
+        Made by <span className="font-bold text-ramp">Cyberheathens</span>
       </footer>
     </div>
   );

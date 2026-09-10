@@ -85,9 +85,7 @@ export default function ParticipantView() {
         className="glass-strong sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-purple to-accent-cyan flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
+          <img src="/logo/logo-mark.svg" alt="Cyberheathens" className="w-8 h-8" />
           <div>
             <h1 className="font-bold text-sm">{room?.name || 'Room'}</h1>
             <p className="text-xs text-text-muted font-mono">{room?.code}</p>
@@ -95,11 +93,11 @@ export default function ParticipantView() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-text-muted">
-            {isConnected ? <Wifi className="w-3.5 h-3.5 text-accent-green" /> : <WifiOff className="w-3.5 h-3.5 text-accent-orange" />}
+            {isConnected ? <Wifi className="w-3.5 h-3.5 text-ok" /> : <WifiOff className="w-3.5 h-3.5 text-amber" />}
             <span>{participantCount}</span>
             <span className="hidden sm:inline">online</span>
           </div>
-          <div className="w-2 h-2 rounded-full bg-accent-green animate-pulse-glow" />
+          <div className="w-2 h-2 rounded-full bg-ok animate-pulse-glow" />
         </div>
       </motion.header>
 
@@ -111,7 +109,7 @@ export default function ParticipantView() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
-                ? 'bg-accent-purple/20 text-accent-purple'
+                ? 'bg-coral/20 text-coral'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
           >
@@ -154,7 +152,7 @@ export default function ParticipantView() {
                   <button
                     onClick={() => setIsAnonymous(!isAnonymous)}
                     className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all ${
-                      isAnonymous ? 'bg-accent-cyan/20 text-accent-cyan' : 'bg-bg-secondary text-text-muted'
+                      isAnonymous ? 'bg-flame/20 text-flame' : 'bg-bg-secondary text-text-muted'
                     }`}
                   >
                     {isAnonymous ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -168,12 +166,12 @@ export default function ParticipantView() {
                     value={qaText}
                     onChange={(e) => setQaText(e.target.value.slice(0, 300))}
                     onKeyDown={(e) => e.key === 'Enter' && handlePostQA()}
-                    className="flex-1 px-3 py-2 rounded-xl bg-bg-primary text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-purple/50 transition-all"
+                    className="flex-1 px-3 py-2 rounded-xl bg-bg-primary text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-coral/50 transition-all"
                   />
                   <button
                     onClick={handlePostQA}
                     disabled={isPosting || !qaText.trim()}
-                    className="p-2 rounded-xl bg-accent-purple/20 text-accent-purple hover:bg-accent-purple/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="p-2 rounded-xl bg-coral/20 text-coral hover:bg-coral/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -203,8 +201,8 @@ export default function ParticipantView() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`glass rounded-xl p-3 ${
-                          post.is_pinned ? 'ring-1 ring-accent-yellow/50' : ''
-                        } ${post.is_answering ? 'ring-1 ring-accent-green/50' : ''} ${
+                          post.is_pinned ? 'ring-1 ring-flame/50' : ''
+                        } ${post.is_answering ? 'ring-1 ring-ok/50' : ''} ${
                           post.is_answered ? 'opacity-60' : ''
                         }`}
                       >
@@ -213,7 +211,7 @@ export default function ParticipantView() {
                             onClick={() => handleUpvote(post.id)}
                             className="flex flex-col items-center gap-0.5 min-w-[40px] pt-0.5"
                           >
-                            <ThumbsUp className="w-4 h-4 text-text-muted hover:text-accent-purple transition-colors" />
+                            <ThumbsUp className="w-4 h-4 text-text-muted hover:text-coral transition-colors" />
                             <span className="text-xs font-bold text-text-secondary">{post.upvotes}</span>
                           </button>
                           <div className="flex-1 min-w-0">
@@ -223,13 +221,13 @@ export default function ParticipantView() {
                                 {post.is_anonymous ? 'Anonymous' : post.display_name}
                               </span>
                               {post.is_pinned && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-accent-yellow/20 text-accent-yellow">Pinned</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-flame/20 text-flame">Pinned</span>
                               )}
                               {post.is_answering && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-accent-green/20 text-accent-green">Answering</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-ok/20 text-ok">Answering</span>
                               )}
                               {post.is_answered && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">Answered</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-flame/20 text-flame">Answered</span>
                               )}
                             </div>
                           </div>
@@ -248,7 +246,7 @@ export default function ParticipantView() {
                   {wordCloudData.map(({ word, count }, i) => {
                     const maxCount = wordCloudData[0].count;
                     const size = 0.75 + (count / maxCount) * 2;
-                    const colors = ['text-accent-purple', 'text-accent-cyan', 'text-accent-pink', 'text-accent-green', 'text-accent-orange'];
+                    const colors = ['text-coral', 'text-flame', 'text-magenta', 'text-ok', 'text-amber'];
                     return (
                       <motion.span
                         key={word}
@@ -276,7 +274,7 @@ export default function ParticipantView() {
 
       {/* Footer */}
       <footer className="text-center py-2 text-text-muted text-xs glass border-t border-border">
-        Made by <span className="font-bold text-gradient">CyberHeathens</span>
+        Made by <span className="font-bold text-ramp">Cyberheathens</span>
       </footer>
     </div>
   );

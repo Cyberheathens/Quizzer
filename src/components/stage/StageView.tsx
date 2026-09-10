@@ -6,7 +6,7 @@ import { Zap, Users, CheckCircle2, Cloud, MessageSquare, Trophy, BarChart3 } fro
 import { useStore } from '@/store/useStore';
 import { useParams } from 'react-router-dom';
 
-const COLORS = ['#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
+const COLORS = ['#ff8359', '#f3586c', '#e63e7a', '#ffb86b', '#f973a1', '#d83563', '#ff6b9d', '#c22e57'];
 
 export default function StageView() {
   const { code } = useParams<{ code: string }>();
@@ -54,12 +54,10 @@ export default function StageView() {
         className="flex items-center justify-between px-8 py-4 glass-strong"
       >
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-purple to-accent-cyan flex items-center justify-center">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
+          <img src="/logo/logo-mark.svg" alt="Cyberheathens" className="w-10 h-10" />
           <div>
             <h1 className="text-2xl font-bold">{room?.name || 'Live Session'}</h1>
-            <p className="text-sm text-text-muted">Powered by <span className="font-bold text-gradient">Engage</span></p>
+            <p className="text-sm text-text-muted">Powered by <span className="font-bold text-ramp">Engage</span></p>
           </div>
         </div>
 
@@ -77,7 +75,7 @@ export default function StageView() {
                 onClick={() => setView(v.key as any)}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   effectiveView === v.key
-                    ? 'bg-accent-purple/30 text-accent-purple'
+                    ? 'bg-coral/30 text-coral'
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
@@ -89,7 +87,7 @@ export default function StageView() {
           </div>
 
           <div className="flex items-center gap-2 px-4 py-2 glass rounded-xl">
-            <Users className="w-5 h-5 text-accent-cyan" />
+            <Users className="w-5 h-5 text-flame" />
             <span className="text-2xl font-bold">{participantCount}</span>
             <span className="text-sm text-text-muted">connected</span>
           </div>
@@ -107,25 +105,19 @@ export default function StageView() {
               exit={{ scale: 0.8, opacity: 0 }}
               className="text-center"
             >
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="inline-block mb-6"
-              >
-                <div className="bg-white rounded-3xl p-8 glow-purple">
-                  <QRCodeSVG value={roomUrl} size={280} bgColor="#ffffff" fgColor="#0a0a0f" />
+<div className="bg-white rounded-3xl p-8 glow-ramp">
+                  <QRCodeSVG value={roomUrl} size={280} bgColor="#ffffff" fgColor="#0a0710" />
                 </div>
-              </motion.div>
 
               <h2 className="text-5xl font-bold mb-3">
-                Join with code: <span className="text-gradient font-mono tracking-[0.2em]">{code}</span>
+                Join with code: <span className="text-ramp font-mono tracking-[0.2em]">{code}</span>
               </h2>
               <p className="text-xl text-text-secondary mb-6">
-                Scan QR code or visit <span className="font-mono text-accent-cyan">{window.location.host}/room/{code}</span>
+                Scan QR code or visit <span className="font-mono text-flame">{window.location.host}/room/{code}</span>
               </p>
 
               <div className="flex items-center justify-center gap-3 text-text-muted">
-                <Zap className="w-5 h-5 text-accent-purple" />
+                <Zap className="w-5 h-5 text-coral" />
                 <span>No signup required — instant access</span>
               </div>
             </motion.div>
@@ -140,7 +132,7 @@ export default function StageView() {
               className="w-full max-w-4xl"
             >
               <div className="text-center mb-8">
-                <span className="text-sm px-3 py-1 rounded-full bg-accent-purple/20 text-accent-purple font-medium">
+                <span className="text-sm px-3 py-1 rounded-full bg-coral/20 text-coral font-medium">
                   {currentPoll.poll_type === 'multi' ? 'Multi-Select' : 'Single Choice'}
                 </span>
                 <h2 className="text-4xl font-bold mt-3">{currentPoll.question}</h2>
@@ -159,7 +151,7 @@ export default function StageView() {
                       transition={{ delay: i * 0.1 }}
                       className="glass rounded-2xl p-6 text-center"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-purple to-accent-cyan flex items-center justify-center text-xl font-bold mx-auto mb-3">
+                      <div className="w-12 h-12 rounded-xl bg-ramp-x text-[#14060e] flex items-center justify-center text-xl font-bold font-display mx-auto mb-3">
                         {String.fromCharCode(65 + i)}
                       </div>
                       <p className="text-xl font-medium">{opt.text}</p>
@@ -170,10 +162,10 @@ export default function StageView() {
                 <div className="glass rounded-2xl p-8">
                   <ResponsiveContainer width="100%" height={400}>
                     <BarChart data={chartData}>
-                      <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 16 }} />
-                      <YAxis tick={{ fill: '#94a3b8', fontSize: 14 }} />
+                      <XAxis dataKey="name" tick={{ fill: '#a393a0', fontSize: 16 }} />
+                      <YAxis tick={{ fill: '#a393a0', fontSize: 14 }} />
                       <Tooltip
-                        contentStyle={{ background: '#1a1a2e', border: '1px solid #2a2a3e', borderRadius: 12, fontSize: 14 }}
+                        contentStyle={{ background: '#150d1d', border: '1px solid rgb(255 240 236 / 10%)', borderRadius: 12, fontSize: 14 }}
                         labelStyle={{ color: '#f1f5f9' }}
                       />
                       <Bar dataKey="value" radius={[12, 12, 0, 0]}>
@@ -194,7 +186,7 @@ export default function StageView() {
                         <div key={i} className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
                           <span className="text-sm">{d.name}</span>
-                          {d.isCorrect && <CheckCircle2 className="w-5 h-5 text-accent-green" />}
+                          {d.isCorrect && <CheckCircle2 className="w-5 h-5 text-ok" />}
                           <span className="font-mono font-bold">{d.percentage}%</span>
                         </div>
                       ))}
@@ -217,12 +209,12 @@ export default function StageView() {
                 <motion.div
                   initial={{ y: 20 }}
                   animate={{ y: 0 }}
-                  className="glass-strong rounded-3xl p-10 text-center glow-green"
+                  className="glass-strong rounded-3xl p-10 text-center glow-ramp"
                 >
-                  <div className="inline-flex p-4 rounded-2xl bg-accent-green/10 mb-4">
-                    <MessageSquare className="w-10 h-10 text-accent-green" />
+                  <div className="inline-flex p-4 rounded-2xl bg-ok/10 mb-4">
+                    <MessageSquare className="w-10 h-10 text-ok" />
                   </div>
-                  <p className="text-xs text-accent-green font-medium mb-2">NOW ANSWERING</p>
+                  <p className="text-xs text-ok font-medium mb-2">NOW ANSWERING</p>
                   <h2 className="text-3xl font-bold mb-3">{answeringPost.content}</h2>
                   <p className="text-text-secondary">— {answeringPost.is_anonymous ? 'Anonymous' : answeringPost.display_name}</p>
                 </motion.div>
@@ -230,12 +222,12 @@ export default function StageView() {
                 <motion.div
                   initial={{ y: 20 }}
                   animate={{ y: 0 }}
-                  className="glass-strong rounded-3xl p-10 text-center glow-purple"
+                  className="glass-strong rounded-3xl p-10 text-center glow-ramp"
                 >
-                  <div className="inline-flex p-4 rounded-2xl bg-accent-yellow/10 mb-4">
-                    <Trophy className="w-10 h-10 text-accent-yellow" />
+                  <div className="inline-flex p-4 rounded-2xl bg-flame/10 mb-4">
+                    <Trophy className="w-10 h-10 text-flame" />
                   </div>
-                  <p className="text-xs text-accent-yellow font-medium mb-2">PINNED QUESTION</p>
+                  <p className="text-xs text-flame font-medium mb-2">PINNED QUESTION</p>
                   <h2 className="text-3xl font-bold mb-3">{pinnedPost.content}</h2>
                   <p className="text-text-secondary">— {pinnedPost.is_anonymous ? 'Anonymous' : pinnedPost.display_name}</p>
                 </motion.div>
@@ -262,7 +254,7 @@ export default function StageView() {
                   {wordCloudData.map(({ word, count }, i) => {
                     const maxCount = wordCloudData[0].count;
                     const size = 1 + (count / maxCount) * 3.5;
-                    const colors = ['text-accent-purple', 'text-accent-cyan', 'text-accent-pink', 'text-accent-green', 'text-accent-orange'];
+                    const colors = ['text-coral', 'text-flame', 'text-magenta', 'text-ok', 'text-amber'];
                     return (
                       <motion.span
                         key={word}
@@ -292,12 +284,12 @@ export default function StageView() {
       {/* Bottom Bar */}
       <footer className="flex items-center justify-between px-8 py-3 glass-strong">
         <div className="flex items-center gap-2 text-text-muted text-sm">
-          <Zap className="w-4 h-4 text-accent-purple" />
+          <Zap className="w-4 h-4 text-coral" />
           <span>Real-time sync active</span>
-          <div className="w-2 h-2 rounded-full bg-accent-green animate-pulse-glow" />
+          <div className="w-2 h-2 rounded-full bg-ok animate-pulse-glow" />
         </div>
         <div className="text-sm text-text-muted">
-          Made by <span className="font-bold text-gradient">CyberHeathens</span> — IISER Bhopal
+          Made by <span className="font-bold text-ramp">Cyberheathens</span> — IISER Bhopal
         </div>
       </footer>
     </div>

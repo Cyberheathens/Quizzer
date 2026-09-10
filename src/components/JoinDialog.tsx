@@ -49,9 +49,7 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
         animate={{ scale: 1, opacity: 1 }}
         className="glass-strong rounded-3xl p-8 max-w-sm w-full text-center"
       >
-        <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-accent-purple to-accent-cyan mb-4">
-          <Zap className="w-8 h-8 text-white" />
-        </div>
+        <img src="/logo/logo-mark.svg" alt="Cyberheathens" className="w-10 h-10 mb-4" />
         <h2 className="text-2xl font-bold mb-1">Join Room</h2>
         <p className="text-text-muted text-sm font-mono mb-6">{roomCode}</p>
 
@@ -66,7 +64,7 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                className="w-full pl-10 pr-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple/50 transition-all"
+                className="w-full pl-10 pr-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
                 autoFocus
               />
             </div>
@@ -81,7 +79,7 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
             />
           </div>
         </div>
@@ -89,7 +87,7 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
         <button
           onClick={handleJoin}
           disabled={isJoining || !name.trim()}
-          className="w-full mt-6 px-6 py-3.5 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-purple"
+          className="w-full mt-6 px-6 py-3.5 rounded-xl bg-ramp-x text-[#14060e] font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-ramp"
         >
           {isJoining ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

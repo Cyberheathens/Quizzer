@@ -55,8 +55,8 @@ export default function CreateRoomPage() {
           animate={{ scale: 1, opacity: 1 }}
           className="glass-strong rounded-3xl p-8 max-w-md w-full text-center"
         >
-          <div className="inline-flex p-4 rounded-2xl bg-accent-green/10 mb-4">
-            <Check className="w-8 h-8 text-accent-green" />
+          <div className="inline-flex p-4 rounded-2xl bg-ok/10 mb-4">
+            <Check className="w-8 h-8 text-ok" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Room Ready!</h2>
           <p className="text-text-secondary mb-6">{createdRoom.name}</p>
@@ -66,11 +66,11 @@ export default function CreateRoomPage() {
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-6">
-            <span className="text-4xl font-mono font-bold tracking-[0.3em] text-gradient">
+            <span className="text-4xl font-mono font-bold tracking-[0.3em] text-ramp">
               {createdRoom.code}
             </span>
             <button onClick={copyCode} className="p-2 rounded-lg hover:bg-bg-secondary transition-colors">
-              {copied ? <Check className="w-5 h-5 text-accent-green" /> : <Copy className="w-5 h-5 text-text-muted" />}
+              {copied ? <Check className="w-5 h-5 text-ok" /> : <Copy className="w-5 h-5 text-text-muted" />}
             </button>
           </div>
 
@@ -83,7 +83,7 @@ export default function CreateRoomPage() {
             </button>
             <button
               onClick={() => navigate(`/room/${createdRoom.code}/host`)}
-              className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all glow-purple"
+              className="flex-1 px-4 py-3 rounded-xl bg-ramp-x text-[#14060e] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all glow-ramp"
             >
               Open Console <ExternalLink className="w-4 h-4" />
             </button>
@@ -91,7 +91,7 @@ export default function CreateRoomPage() {
         </motion.div>
 
         <p className="mt-6 text-text-muted text-sm">
-          Made by <span className="font-bold text-gradient">CyberHeathens</span>
+          Made by <span className="font-bold text-ramp">Cyberheathens</span>
         </p>
       </div>
     );
@@ -114,9 +114,7 @@ export default function CreateRoomPage() {
         className="glass-strong rounded-3xl p-8 max-w-md w-full"
       >
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-accent-purple to-accent-cyan">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
+          <img src="/logo/logo-mark.svg" alt="Cyberheathens" className="w-6 h-6" />
           <div>
             <h2 className="text-xl font-bold">Create a Room</h2>
             <p className="text-sm text-text-muted">Set up your live session</p>
@@ -131,7 +129,7 @@ export default function CreateRoomPage() {
               placeholder="e.g. CS101 Lecture Poll"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
             />
           </div>
           <div>
@@ -141,7 +139,7 @@ export default function CreateRoomPage() {
               placeholder="e.g. Prof. Smith"
               value={hostName}
               onChange={(e) => setHostName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
             />
           </div>
           <div>
@@ -153,7 +151,7 @@ export default function CreateRoomPage() {
               placeholder="Optional room passcode"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple/50 transition-all"
+              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
             />
           </div>
         </div>
@@ -161,7 +159,7 @@ export default function CreateRoomPage() {
         <button
           onClick={handleCreate}
           disabled={isCreating || !roomName.trim() || !hostName.trim()}
-          className="w-full mt-6 px-6 py-3.5 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-purple"
+          className="w-full mt-6 px-6 py-3.5 rounded-xl bg-ramp-x text-[#14060e] font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-ramp"
         >
           {isCreating ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -172,7 +170,7 @@ export default function CreateRoomPage() {
       </motion.div>
 
       <p className="mt-6 text-text-muted text-sm">
-        Made by <span className="font-bold text-gradient">CyberHeathens</span>
+        Made by <span className="font-bold text-ramp">Cyberheathens</span>
       </p>
     </div>
   );

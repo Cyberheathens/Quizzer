@@ -27,10 +27,10 @@ export default function LandingPage() {
   };
 
   const features = [
-    { icon: BarChart3, label: 'Live Polling', desc: 'Real-time voting with instant results', color: 'text-accent-purple' },
-    { icon: MessageSquare, label: 'Q&A Text Wall', desc: 'Audience questions with upvoting', color: 'text-accent-cyan' },
-    { icon: Users, label: 'Zero Signup', desc: 'Join instantly with 6-digit code', color: 'text-accent-pink' },
-    { icon: Zap, label: 'Sub-150ms Sync', desc: 'Lightning-fast real-time updates', color: 'text-accent-green' },
+    { icon: BarChart3, label: 'Live Polling', desc: 'Real-time voting with instant results', color: 'text-coral' },
+    { icon: MessageSquare, label: 'Q&A Text Wall', desc: 'Audience questions with upvoting', color: 'text-flame' },
+    { icon: Users, label: 'Zero Signup', desc: 'Join instantly with 6-digit code', color: 'text-magenta' },
+    { icon: Zap, label: 'Sub-150ms Sync', desc: 'Lightning-fast real-time updates', color: 'text-ok' },
   ];
 
   return (
@@ -42,14 +42,12 @@ export default function LandingPage() {
         className="flex items-center justify-between px-6 py-4"
       >
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-purple to-accent-cyan flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-gradient">Engage</span>
+          <img src="/logo/logo-mark.svg" alt="Cyberheathens" className="w-8 h-8" />
+          <span className="text-xl font-bold font-display text-text-primary">Engage</span>
         </div>
         <button
           onClick={() => navigate('/create')}
-          className="px-4 py-2 rounded-lg glass hover:bg-accent-purple/20 transition-all text-sm font-medium"
+          className="px-4 py-2 rounded-lg glass hover:bg-coral/20 transition-all text-sm font-medium"
         >
           Host a Room
         </button>
@@ -67,7 +65,7 @@ export default function LandingPage() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-6 text-sm text-accent-cyan"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-6 text-sm text-flame"
           >
             <Sparkles className="w-4 h-4" />
             Real-time audience engagement
@@ -80,7 +78,7 @@ export default function LandingPage() {
             className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
           >
             Make Every Voice{' '}
-            <span className="text-gradient">Count</span>
+            <span className="text-ramp">Count</span>
           </motion.h1>
 
           <motion.p
@@ -108,14 +106,14 @@ export default function LandingPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                className="w-full pl-10 pr-4 py-3.5 rounded-xl glass-strong text-center text-2xl font-mono tracking-[0.3em] text-text-primary placeholder:text-text-muted placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-accent-purple/50 transition-all"
+                className="w-full pl-10 pr-4 py-3.5 rounded-xl glass-strong text-center text-2xl font-mono tracking-[0.3em] text-text-primary placeholder:text-text-muted placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
                 maxLength={6}
               />
             </div>
             <button
               onClick={handleJoin}
               disabled={isJoining || code.length !== 6}
-              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-accent-purple to-accent-cyan text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-purple"
+              className="px-6 py-3.5 rounded-xl bg-ramp-x text-[#14060e] font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-ramp"
             >
               {isJoining ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -157,9 +155,9 @@ export default function LandingPage() {
       <footer className="text-center py-6 text-text-muted text-sm">
         <div className="flex items-center justify-center gap-2">
           <span>Made with</span>
-          <span className="text-accent-pink animate-pulse-glow">⚡</span>
+          <span className="text-magenta animate-pulse-glow">⚡</span>
           <span>by</span>
-          <span className="font-bold text-gradient">CyberHeathens</span>
+          <span className="font-bold text-ramp">Cyberheathens</span>
         </div>
         <p className="text-xs mt-1 opacity-60">IISER Bhopal Coding Club</p>
       </footer>
