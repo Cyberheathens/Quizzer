@@ -69,3 +69,9 @@ export const heartbeatParticipant = (data: {
   sessionId: string;
   displayName?: string;
 }) => fetchJSON<{ count: number; intervalMs?: number }>(`${BASE}/participants`, { method: 'POST', body: JSON.stringify(data) });
+
+export const getRoomState = (data: {
+  roomId: string;
+  sessionId: string;
+  displayName?: string;
+}) => fetchJSON<{ participants: number; polls: Poll[]; qa: QAPost[]; intervalMs: number }>(`${BASE}/state`, { method: 'POST', body: JSON.stringify(data) });

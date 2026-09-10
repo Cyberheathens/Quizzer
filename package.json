@@ -10,7 +10,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "db:init": "node scripts/init-db.mjs"
+    "db:init": "node scripts/init-db.mjs",
+    "prewarm": "node scripts/prewarm.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

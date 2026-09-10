@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Routes, Route, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getRoom, getPolls, getQAPosts, getVoteResults, heartbeatParticipant } from '@/lib/api';
+import { getRoom, getPolls, getQAPosts, getVoteResults, getRoomState } from '@/lib/api';
 import type { Room } from '@/types';
 import { subscribeToRoom, unsubscribeFromRoom } from '@/lib/pusher';
 import { useStore } from '@/store/useStore';
@@ -65,32 +65,29 @@ export default function RoomPage() {
     const refresh = async (r: Room): Promise<number> => {
       if (!alive) return 2500;
       try {
-        const [polls, posts, participants] = await Promise.all([
-          getPolls(r.id).catch(() => null),
-          getQAPosts(r.id).catch(() => null),
-          heartbeatParticipant({ roomId: r.id, sessionId, displayName }).catch(() => null),
-        ]);
+        const s = await getRoomState({ roomId: r.id, sessionId, displayName });
 
-        if (polls) {
-          setPolls(polls);
-          const latest = polls[0];
+        setQAPosts(s.qa || []);
+        setParticipantCount(s.participants);
+
+        if (s.polls) {
+          setPolls(s.polls);
+          const latest = s.polls[0];
           if (latest) {
             const cur = useStore.getState().currentPoll;
             if (!cur || cur.id !== latest.id || cur.phase !== latest.phase) {
               useStore.setState({ currentPoll: latest });
             }
             if (latest.phase !== 'voting_open') {
-              const results = await getVoteResults(latest.id).catch(() => null);
-              if (results) setVoteResults(latest.id, results);
+              const cached = useStore.getState().voteResults[latest.id];
+              if (!cached) {
+                const results = await getVoteResults(latest.id).catch(() => null);
+                if (results) setVoteResults(latest.id, results);
+              }
             }
           }
         }
-        if (posts) setQAPosts(posts);
-        if (participants) {
-          setParticipantCount(participants.count);
-          return participants.intervalMs ?? 2500;
-        }
-        return 2500;
+        return s.intervalMs ?? 2500;
       } catch {
         return 5000;
       }

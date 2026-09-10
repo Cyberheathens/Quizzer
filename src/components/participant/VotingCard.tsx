@@ -168,7 +168,7 @@ export default function VotingCard({
                       cx="50%"
                       cy="50%"
                       outerRadius={70}
-                      label={({ name, percentage }) => `${name} (${percentage}%)`}
+                      label={({ name, percentage }: any) => `${name} (${percentage}%)`}
                     >
                       {chartData.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
