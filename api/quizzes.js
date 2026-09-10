@@ -156,8 +156,8 @@ export default async function handler(req, res) {
       const current = questions[quiz.active_index];
       if (!current) return res.status(404).json({ error: 'No active question' });
 
-      const newPhase = action === 'lock' ? 'voting_locked' : 'results_shown';
-      await sql`UPDATE polls SET phase = ${newPhase(action)} WHERE id = ${current.id}`;
+      const phase = action === 'lock' ? 'voting_locked' : 'results_shown';
+      await sql`UPDATE polls SET phase = ${phase} WHERE id = ${current.id}`;
       const voteResults = await aggregateResults(current.id);
 
       const rooms = await sql`SELECT code FROM rooms WHERE id = ${quiz.room_id}`;
@@ -205,7 +205,3 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: 'Method not allowed' });
 };
-
-function newPhase(action) {
-  return action === 'lock' ? 'voting_locked' : 'results_shown';
-}
