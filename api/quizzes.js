@@ -92,6 +92,36 @@ export default async function handler(req, res) {
     if (quizRows.length === 0) return res.status(404).json({ error: 'Quiz not found' });
     const quiz = quizRows[0];
 
+    if (action === 'update') {
+      if (quiz.active_index !== null && quiz.active_index !== undefined) {
+        return res.status(409).json({ error: 'Launched quizzes cannot be edited' });
+      }
+      const { title, questions } = req.body;
+      if (title) {
+        await sql`UPDATE quizzes SET title = ${title} WHERE id = ${quizId}`;
+      }
+      if (Array.isArray(questions) && questions.length > 0) {
+        // Draft quiz — safe to replace questions wholesale
+        await sql`DELETE FROM polls WHERE quiz_id = ${quizId}`;
+        for (let i = 0; i < questions.length; i++) {
+          const q = questions[i];
+          await sql`
+            INSERT INTO polls (room_id, quiz_id, order_index, question, poll_type, options, correct_answers, timer_seconds, question_image, phase)
+            VALUES (
+              ${quiz.room_id}, ${quizId}, ${i}, ${q.question}, ${q.pollType || 'single'},
+              ${JSON.stringify(q.options.map((o, j) => ({ id: j, text: o.text, is_correct: o.isCorrect })))},
+              ${q.options.map((o, j) => (o.isCorrect ? j : -1)).filter((j) => j >= 0)},
+              ${q.timerSeconds || null},
+              ${q.questionImage || null},
+              'draft'
+            )
+          `;
+        }
+      }
+      const snap = await getQuizSnapshot(quiz.room_id, quizId);
+      return res.status(200).json(snap);
+    }
+
     if (action === 'delete') {
       if (quiz.active_index !== null && quiz.active_index !== undefined) {
         return res.status(409).json({ error: 'Launched quizzes cannot be deleted' });

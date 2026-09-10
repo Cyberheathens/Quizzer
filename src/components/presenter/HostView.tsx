@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -7,7 +7,7 @@ import {
   Timer, XCircle, ImageIcon, Rocket, Lock, Pencil, DoorOpen, DoorClosed,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { createPoll, updatePollPhase, updateQAPost, launchPoll, updateDraftPoll, deletePoll, roomAction, createQuiz, getQuizzes, quizAction } from '@/lib/api';
+import { createPoll, updatePollPhase, updateQAPost, launchPoll, updateDraftPoll, deletePoll, roomAction, createQuiz, updateQuiz, getQuizzes, quizAction } from '@/lib/api';
 import type { QuizSnapshot } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -47,6 +47,7 @@ export default function HostView() {
     title: string;
     questions: { question: string; imageUrl: string; pollType: 'single' | 'multi'; options: { text: string; isCorrect: boolean }[]; timer: number | null }[];
   } | null>(null);
+  const editingQuizId = useRef<string | null>(null);
   const [quizBusy, setQuizBusy] = useState(false);
 
   const loadQuizzes = () => {
@@ -57,6 +58,22 @@ export default function HostView() {
     loadQuizzes();
   }, [room?.id]);
 
+  const handleEditQuiz = (snap: QuizSnapshot) => {
+    if (snap.quiz.active_index !== null && snap.quiz.active_index !== undefined) return;
+    editingQuizId.current = snap.quiz.id;
+    setQuizForm({
+      title: snap.quiz.title,
+      questions: snap.questions.map((q) => ({
+        question: q.question,
+        imageUrl: q.question_image || '',
+        pollType: q.poll_type === 'multi' ? ('multi' as const) : ('single' as const),
+        options: q.options.map((o) => ({ text: o.text, isCorrect: o.is_correct })),
+        timer: q.timer_seconds,
+      })),
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleCreateQuiz = async () => {
     if (!room || !quizForm) return;
     const clean = quizForm.questions.filter((q) => q.question.trim() && q.options.filter((o) => o.text.trim()).length >= 2);
@@ -66,8 +83,7 @@ export default function HostView() {
     }
     setQuizBusy(true);
     try {
-      await createQuiz({
-        roomId: room.id,
+      const payload = {
         title: quizForm.title.trim(),
         questions: clean.map((q) => ({
           question: q.question.trim(),
@@ -76,8 +92,15 @@ export default function HostView() {
           options: q.options.filter((o) => o.text.trim()),
           timerSeconds: q.timer,
         })),
-      });
-      toast.success('Quiz saved — launch Q1 when ready');
+      };
+      if (editingQuizId.current) {
+        await updateQuiz({ quizId: editingQuizId.current, ...payload });
+        toast.success('Quiz updated');
+      } else {
+        await createQuiz({ roomId: room.id, ...payload });
+        toast.success('Quiz saved — launch Q1 when ready');
+      }
+      editingQuizId.current = null;
       setQuizForm(null);
       loadQuizzes();
     } catch (err: any) {
@@ -648,7 +671,7 @@ export default function HostView() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold">Quizzes</h2>
                 <button
-                  onClick={() => setQuizForm({ title: '', questions: [emptyQ()] })}
+                  onClick={() => { editingQuizId.current = null; setQuizForm({ title: '', questions: [emptyQ()] }); }}
                   className="btn-solid px-4 py-2.5 text-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -660,7 +683,7 @@ export default function HostView() {
                 {quizForm && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-4">
                     <div className="glass rounded-2xl p-5">
-                      <h3 className="font-bold mb-3">Build Quiz</h3>
+                      <h3 className="font-bold mb-3">{editingQuizId.current ? 'Edit Quiz' : 'Build Quiz'}</h3>
                       <input
                         type="text"
                         placeholder="Quiz title (e.g. CS Championship Round)"
@@ -748,7 +771,7 @@ export default function HostView() {
                         </button>
                       </div>
                       <div className="flex gap-2 mt-4">
-                        <button onClick={() => setQuizForm(null)} className="btn-ghost px-4 py-2.5 text-sm flex-1">Cancel</button>
+                        <button onClick={() => { editingQuizId.current = null; setQuizForm(null); }} className="btn-ghost px-4 py-2.5 text-sm flex-1">Cancel</button>
                         <button onClick={handleCreateQuiz} disabled={quizBusy} className="btn-solid px-4 py-2.5 text-sm flex-1">Save Quiz</button>
                       </div>
                     </div>
@@ -785,6 +808,7 @@ export default function HostView() {
                           <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
                             {!launched && (
                               <>
+                                <button onClick={() => handleEditQuiz(snap)} className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-flame transition-colors" title="Edit draft quiz"><Pencil className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => { if (window.confirm('Delete quiz?')) handleQuizAction(snap.quiz.id, 'delete'); }} className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-magenta transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => handleQuizAction(snap.quiz.id, 'launch')} className="btn-solid px-3 py-2 text-xs"><Rocket className="w-3 h-3" />Launch Q1</button>
                               </>

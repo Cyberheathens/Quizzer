@@ -111,6 +111,18 @@ export const createQuiz = (data: {
 export const getQuizzes = (roomId: string) =>
   fetchJSON<QuizSnapshot[]>(`${BASE}/quizzes?roomId=${roomId}`);
 
+export const updateQuiz = (data: {
+  quizId: string;
+  title?: string;
+  questions?: {
+    question: string;
+    questionImage?: string;
+    pollType?: 'single' | 'multi';
+    options: { text: string; isCorrect: boolean }[];
+    timerSeconds?: number | null;
+  }[];
+}) => fetchJSON<QuizSnapshot>(`${BASE}/quizzes`, { method: 'PATCH', body: JSON.stringify({ ...data, action: 'update' }) });
+
 export const quizAction = (quizId: string, action: 'launch' | 'lock' | 'reveal' | 'next' | 'delete') =>
   fetchJSON<QuizSnapshot>(`${BASE}/quizzes`, { method: 'PATCH', body: JSON.stringify({ quizId, action }) });
 
