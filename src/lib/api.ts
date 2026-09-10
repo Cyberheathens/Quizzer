@@ -63,3 +63,9 @@ export const updateQAPost = (data: {
   postId: string;
   action: 'pin' | 'answering' | 'answered' | 'hide' | 'upvote';
 }) => fetchJSON<QAPost>(`${BASE}/qa`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const heartbeatParticipant = (data: {
+  roomId: string;
+  sessionId: string;
+  displayName?: string;
+}) => fetchJSON<{ count: number }>(`${BASE}/participants`, { method: 'POST', body: JSON.stringify(data) });

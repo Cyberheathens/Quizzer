@@ -23,6 +23,10 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
+async function fire(channel, event, data) {
+  try { await pusher.trigger(channel, event, data); } catch {}
+}
+
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -59,6 +63,13 @@ async function initDB() {
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(poll_id, session_id)
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS members (
+    room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
+    display_name TEXT DEFAULT 'Anonymous',
+    last_seen TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (room_id, session_id)
+  )`;
   await sql`CREATE TABLE IF NOT EXISTS qa_posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
@@ -85,7 +96,7 @@ app.get('/api/rooms', async (req, res) => {
     const result = await sql`SELECT * FROM rooms WHERE code = ${String(code).toUpperCase()} AND is_active = true`;
     if (result.length === 0) return res.status(404).json({ error: 'Room not found' });
     res.json(result[0]);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/rooms', async (req, res) => {
@@ -95,7 +106,7 @@ app.post('/api/rooms', async (req, res) => {
     let code = generateCode();
     const result = await sql`INSERT INTO rooms (code, name, host_name, passcode) VALUES (${code}, ${name}, ${hostName}, ${passcode || null}) RETURNING *`;
     res.status(201).json(result[0]);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/rooms/join', async (req, res) => {
@@ -105,9 +116,11 @@ app.post('/api/rooms/join', async (req, res) => {
     if (rooms.length === 0) return res.status(404).json({ error: 'Room not found' });
     const room = rooms[0];
     if (room.passcode && room.passcode !== passcode) return res.status(403).json({ error: 'Invalid passcode' });
-    await pusher.trigger(`room-${room.code}`, 'participants', { count: Date.now() });
-    res.json({ room, sessionId });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    await sql`INSERT INTO members (room_id, session_id, display_name) VALUES (${room.id}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()`;
+    const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${room.id} AND last_seen > now() - interval '5 minutes'`;
+    await fire(`room-${room.code}`, 'participants', { count: counts[0].count });
+    res.json({ room, sessionId, participantCount: counts[0].count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Poll routes
@@ -116,22 +129,22 @@ app.get('/api/polls', async (req, res) => {
     const { roomId } = req.query;
     if (!roomId) return res.status(400).json({ error: 'Room ID required' });
     const result = await sql`SELECT * FROM polls WHERE room_id = ${String(roomId)} ORDER BY created_at DESC`;
-    res.json(result.map((p: any) => ({ ...p, options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options })));
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    res.json(result.map((p) => ({ ...p, options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/polls', async (req, res) => {
   try {
     const { roomId, question, pollType, options, timerSeconds } = req.body;
     if (!roomId || !question || !options || options.length < 2) return res.status(400).json({ error: 'Missing fields' });
-    const opts = options.map((o: any, i: number) => ({ id: i, text: o.text, is_correct: o.isCorrect }));
-    const correct = options.map((o: any, i: number) => o.isCorrect ? i : -1).filter((i: number) => i >= 0);
+    const opts = options.map((o, i) => ({ id: i, text: o.text, is_correct: o.isCorrect }));
+    const correct = options.map((o, i) => o.isCorrect ? i : -1).filter((i) => i >= 0);
     const result = await sql`INSERT INTO polls (room_id, question, poll_type, options, correct_answers, timer_seconds) VALUES (${roomId}, ${question}, ${pollType || 'single'}, ${JSON.stringify(opts)}, ${correct}, ${timerSeconds || null}) RETURNING *`;
     const poll = { ...result[0], options: typeof result[0].options === 'string' ? JSON.parse(result[0].options) : result[0].options };
     const rooms = await sql`SELECT code FROM rooms WHERE id = ${roomId}`;
-    if (rooms.length > 0) await pusher.trigger(`room-${rooms[0].code}`, 'poll:new', poll);
+    if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:new', poll);
     res.status(201).json(poll);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.patch('/api/polls', async (req, res) => {
@@ -144,10 +157,10 @@ app.patch('/api/polls', async (req, res) => {
     const polls = await sql`SELECT room_id FROM polls WHERE id = ${pollId}`;
     if (polls.length > 0) {
       const rooms = await sql`SELECT code FROM rooms WHERE id = ${polls[0].room_id}`;
-      if (rooms.length > 0) await pusher.trigger(`room-${rooms[0].code}`, 'poll:update', poll);
+      if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:update', poll);
     }
     res.json(poll);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Vote routes
@@ -156,12 +169,12 @@ app.get('/api/votes', async (req, res) => {
     const { pollId } = req.query;
     if (!pollId) return res.status(400).json({ error: 'Poll ID required' });
     const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${String(pollId)}`;
-    const counts: Record<number, number> = {};
-    votes.forEach((v: any) => {
-      (Array.isArray(v.selected_options) ? v.selected_options : []).forEach((o: number) => { counts[o] = (counts[o] || 0) + 1; });
+    const counts = {};
+    votes.forEach((v) => {
+      (Array.isArray(v.selected_options) ? v.selected_options : []).forEach((o) => { counts[o] = (counts[o] || 0) + 1; });
     });
     res.json(Object.entries(counts).map(([idx, count]) => ({ optionIndex: parseInt(idx), count })));
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/votes', async (req, res) => {
@@ -175,15 +188,15 @@ app.post('/api/votes', async (req, res) => {
     if (polls[0].phase !== 'voting_open') return res.status(403).json({ error: 'Voting is closed' });
     await sql`INSERT INTO votes (poll_id, session_id, selected_options) VALUES (${pollId}, ${sessionId}, ${selectedOptions})`;
     const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
-    const counts: Record<number, number> = {};
-    votes.forEach((v: any) => {
-      (Array.isArray(v.selected_options) ? v.selected_options : []).forEach((o: number) => { counts[o] = (counts[o] || 0) + 1; });
+    const counts = {};
+    votes.forEach((v) => {
+      (Array.isArray(v.selected_options) ? v.selected_options : []).forEach((o) => { counts[o] = (counts[o] || 0) + 1; });
     });
     const results = Object.entries(counts).map(([idx, count]) => ({ optionIndex: parseInt(idx), count }));
     const rooms = await sql`SELECT code FROM rooms WHERE id = ${polls[0].room_id}`;
-    if (rooms.length > 0) await pusher.trigger(`room-${rooms[0].code}`, 'vote:update', { pollId, results });
+    if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'vote:update', { pollId, results });
     res.json({ success: true });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Q&A routes
@@ -193,7 +206,7 @@ app.get('/api/qa', async (req, res) => {
     if (!roomId) return res.status(400).json({ error: 'Room ID required' });
     const result = await sql`SELECT * FROM qa_posts WHERE room_id = ${String(roomId)} ORDER BY created_at DESC LIMIT 100`;
     res.json(result);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/qa', async (req, res) => {
@@ -203,9 +216,9 @@ app.post('/api/qa', async (req, res) => {
     if (content.length > 300) return res.status(400).json({ error: 'Too long' });
     const result = await sql`INSERT INTO qa_posts (room_id, content, display_name, is_anonymous) VALUES (${roomId}, ${content}, ${displayName || 'Anonymous'}, ${isAnonymous || false}) RETURNING *`;
     const rooms = await sql`SELECT code FROM rooms WHERE id = ${roomId}`;
-    if (rooms.length > 0) await pusher.trigger(`room-${rooms[0].code}`, 'qa:new', result[0]);
+    if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'qa:new', result[0]);
     res.status(201).json(result[0]);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.patch('/api/qa', async (req, res) => {
@@ -225,10 +238,30 @@ app.patch('/api/qa', async (req, res) => {
     const posts = await sql`SELECT room_id FROM qa_posts WHERE id = ${postId}`;
     if (posts.length > 0) {
       const rooms = await sql`SELECT code FROM rooms WHERE id = ${posts[0].room_id}`;
-      if (rooms.length > 0) await pusher.trigger(`room-${rooms[0].code}`, 'qa:update', result[0]);
+      if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'qa:update', result[0]);
     }
     res.json(result[0]);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Participants
+app.get('/api/participants', async (req, res) => {
+  try {
+    const { roomId } = req.query;
+    if (!roomId) return res.status(400).json({ error: 'Room ID required' });
+    const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${String(roomId)} AND last_seen > now() - interval '5 minutes'`;
+    res.json({ count: counts[0].count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/participants', async (req, res) => {
+  try {
+    const { roomId, sessionId, displayName } = req.body;
+    if (!roomId || !sessionId) return res.status(400).json({ error: 'Room ID and session ID required' });
+    await sql`INSERT INTO members (room_id, session_id, display_name) VALUES (${roomId}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()`;
+    const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${roomId} AND last_seen > now() - interval '5 minutes'`;
+    res.json({ count: counts[0].count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Pusher auth
@@ -237,7 +270,7 @@ app.post('/api/pusher/auth', (req, res) => {
   try {
     const auth = pusher.authorizeChannel(socket_id, channel_name);
     res.json(auth);
-  } catch (e: any) {
+  } catch (e) {
     res.status(403).json({ error: e.message });
   }
 });

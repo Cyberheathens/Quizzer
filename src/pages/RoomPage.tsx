@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Routes, Route, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getRoom, getPolls, getQAPosts } from '@/lib/api';
+import { getRoom, getPolls, getQAPosts, getVoteResults, heartbeatParticipant } from '@/lib/api';
+import type { Room } from '@/types';
 import { subscribeToRoom, unsubscribeFromRoom } from '@/lib/pusher';
 import { useStore } from '@/store/useStore';
 import ParticipantView from '@/components/participant/ParticipantView';
@@ -10,15 +11,20 @@ import StageView from '@/components/stage/StageView';
 import JoinDialog from '@/components/JoinDialog';
 import toast from 'react-hot-toast';
 
+const REFRESH_MS = 2500;
+
 export default function RoomPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setParticipantCount, setConnected } = useStore();
+  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setConnected } = useStore();
   const [loading, setLoading] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
 
   useEffect(() => {
     if (!code) return;
+
+    let alive = true;
+    let interval: ReturnType<typeof setInterval> | undefined;
 
     const loadRoom = async () => {
       try {
@@ -40,11 +46,45 @@ export default function RoomPage() {
             setNeedsJoin(true);
           }
         }
+
+        if (alive) {
+          interval = setInterval(() => refresh(r), REFRESH_MS);
+        }
       } catch {
         toast.error('Room not found');
         navigate('/');
       } finally {
         setLoading(false);
+      }
+    };
+
+    const refresh = async (r: Room) => {
+      if (!alive) return;
+      try {
+        const [polls, posts, participants] = await Promise.all([
+          getPolls(r.id).catch(() => null),
+          getQAPosts(r.id).catch(() => null),
+          heartbeatParticipant({ roomId: r.id, sessionId, displayName }).catch(() => null),
+        ]);
+
+        if (polls) {
+          setPolls(polls);
+          const latest = polls[0];
+          if (latest) {
+            const cur = useStore.getState().currentPoll;
+            if (!cur || cur.id !== latest.id || cur.phase !== latest.phase) {
+              useStore.setState({ currentPoll: latest });
+            }
+            if (latest.phase !== 'voting_open') {
+              const results = await getVoteResults(latest.id).catch(() => null);
+              if (results) setVoteResults(latest.id, results);
+            }
+          }
+        }
+        if (posts) setQAPosts(posts);
+        if (participants) setParticipantCount(participants.count);
+      } catch {
+        // transient network error — next tick retries
       }
     };
 
@@ -56,6 +96,7 @@ export default function RoomPage() {
     channel.bind('qa:new', (data: any) => addQAPost(data));
     channel.bind('qa:update', (data: any) => updateQAPost(data));
     channel.bind('participants', (data: any) => setParticipantCount(data.count));
+    channel.bind('vote:update', (data: any) => setVoteResults(data.pollId, data.results));
     channel.bind('room:ended', () => {
       toast('Room has ended');
       navigate('/');
@@ -64,6 +105,8 @@ export default function RoomPage() {
     setConnected(true);
 
     return () => {
+      alive = false;
+      if (interval) clearInterval(interval);
       unsubscribeFromRoom(code);
       setConnected(false);
     };

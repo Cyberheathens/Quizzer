@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, initDB } from './_db';
-import pusher from './_pusher';
+import { fire } from './_pusher';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   await initDB();
@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const poll = polls[0];
     const rooms = await sql`SELECT code FROM rooms WHERE id = ${poll.room_id}`;
     if (rooms.length > 0) {
-      await pusher.trigger(`room-${rooms[0].code}`, 'vote:update', { pollId, results });
+      await fire(`room-${rooms[0].code}`, 'vote:update', { pollId, results });
     }
 
     return res.status(200).json({ success: true });

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, initDB } from '../_db';
-import pusher from '../_pusher';
+import { fire } from '../_pusher';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   await initDB();
@@ -21,7 +21,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Invalid passcode' });
     }
 
-    return res.status(200).json({ room, sessionId });
+    await sql`
+      INSERT INTO members (room_id, session_id, display_name)
+      VALUES (${room.id}, ${sessionId}, ${displayName})
+      ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()
+    `;
+
+    const counts = await sql`
+      SELECT count(*)::int AS count FROM members
+      WHERE room_id = ${room.id} AND last_seen > now() - interval '5 minutes'
+    `;
+
+    await fire(`room-${room.code}`, 'participants', { count: counts[0].count });
+
+    return res.status(200).json({ room, sessionId, participantCount: counts[0].count });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

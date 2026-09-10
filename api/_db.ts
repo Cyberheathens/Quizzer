@@ -56,5 +56,13 @@ export async function initDB() {
       is_hidden BOOLEAN DEFAULT false,
       created_at TIMESTAMPTZ DEFAULT now()
     )
+  await sql`
+    CREATE TABLE IF NOT EXISTS members (
+      room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+      session_id TEXT NOT NULL,
+      display_name TEXT DEFAULT 'Anonymous',
+      last_seen TIMESTAMPTZ DEFAULT now(),
+      PRIMARY KEY (room_id, session_id)
+    )
   `;
 }

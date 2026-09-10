@@ -9,3 +9,11 @@ const pusher = new Pusher({
 });
 
 export default pusher;
+
+export async function fire(channel: string, event: string, data: unknown) {
+  try {
+    await pusher.trigger(channel, event, data);
+  } catch {
+    // Pusher not configured or unreachable — REST fallback covers clients
+  }
+}

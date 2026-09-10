@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, initDB } from './_db';
-import pusher from './_pusher';
+import { fire } from './_pusher';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   await initDB();
@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get room code
     const rooms = await sql`SELECT code FROM rooms WHERE id = ${roomId}`;
     if (rooms.length > 0) {
-      await pusher.trigger(`room-${rooms[0].code}`, 'qa:new', post);
+      await fire(`room-${rooms[0].code}`, 'qa:new', post);
     }
 
     return res.status(201).json(post);
@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (posts.length > 0) {
       const rooms = await sql`SELECT code FROM rooms WHERE id = ${posts[0].room_id}`;
       if (rooms.length > 0) {
-        await pusher.trigger(`room-${rooms[0].code}`, 'qa:update', post);
+        await fire(`room-${rooms[0].code}`, 'qa:update', post);
       }
     }
 
