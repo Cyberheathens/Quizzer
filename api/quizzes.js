@@ -1,5 +1,7 @@
-const { sql, initDB } = require('./_db.cjs');
-const { fire } = require('./_pusher.cjs');
+import db from './_db.cjs';
+const { sql, initDB } = db;
+import pusherPkg from './_pusher.cjs';
+const { fire } = pusherPkg;
 
 async function getQuizSnapshot(roomId, quizId) {
   const quizzes = await sql`SELECT * FROM quizzes WHERE id = ${quizId} AND room_id = ${roomId}`;
@@ -26,7 +28,7 @@ async function aggregateResults(pollId) {
   return Object.entries(counts).map(([idx, count]) => ({ optionIndex: parseInt(idx), count }));
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {

@@ -1,6 +1,7 @@
-const { sql, initDB } = require('./_db.cjs');
+import db from './_db.cjs';
+const { sql, initDB } = db;
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   await initDB();
 
   if (req.method === 'GET') {
