@@ -1,4 +1,4 @@
-const { sql, initDB } = require('./_db');
+const { sql, initDB } = require('./_db.cjs');
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

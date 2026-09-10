@@ -1,4 +1,4 @@
-const { sql, initDB } = require('../_db');
+const { sql, initDB } = require('../_db.cjs');
 
 module.exports = async function handler(req, res) {
   await initDB();

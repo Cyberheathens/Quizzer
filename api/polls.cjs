@@ -1,5 +1,5 @@
-const { sql, initDB } = require('../_db');
-const { fire } = require('../_pusher');
+const { sql, initDB } = require('../_db.cjs');
+const { fire } = require('../_pusher.cjs');
 
 function parseOptions(rows) {
   return rows.map((p) => ({

@@ -1,4 +1,4 @@
-const { sql, initDB } = require('./_db');
+const { sql, initDB } = require('./_db.cjs');
 
 function intervalFor(count, hasOpen) {
   if (hasOpen) return 5000;
