@@ -1,4 +1,4 @@
-import Pusher from 'pusher';
+const Pusher = require('pusher');
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID || '',
@@ -8,12 +8,12 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-export default pusher;
+exports.pusher = pusher;
 
-export async function fire(channel: string, event: string, data: unknown) {
+exports.fire = async function fire(channel, event, data) {
   try {
     await pusher.trigger(channel, event, data);
   } catch {
     // Pusher not configured or unreachable — REST fallback covers clients
   }
-}
+};

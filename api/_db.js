@@ -1,15 +1,15 @@
-import { neon } from '@neondatabase/serverless';
+const { neon } = require('@neondatabase/serverless');
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 
-export const sql = neon(DATABASE_URL);
+exports.sql = neon(DATABASE_URL);
 
-export async function initDB() {
-  await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'`;
-  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS question_image TEXT`;
-  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS launched_at TIMESTAMPTZ`;
+exports.initDB = async function initDB() {
+  await exports.sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'`;
+  await exports.sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS question_image TEXT`;
+  await exports.sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS launched_at TIMESTAMPTZ`;
 
-  await sql`
+  await exports.sql`
     CREATE TABLE IF NOT EXISTS rooms (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       code VARCHAR(6) UNIQUE NOT NULL,
@@ -17,11 +17,12 @@ export async function initDB() {
       host_name TEXT NOT NULL,
       passcode TEXT,
       is_active BOOLEAN DEFAULT true,
+      status TEXT NOT NULL DEFAULT 'open',
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `;
 
-  await sql`
+  await exports.sql`
     CREATE TABLE IF NOT EXISTS polls (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
@@ -31,11 +32,13 @@ export async function initDB() {
       phase VARCHAR(20) DEFAULT 'voting_open',
       correct_answers INTEGER[] DEFAULT '{}',
       timer_seconds INTEGER,
+      question_image TEXT,
+      launched_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `;
 
-  await sql`
+  await exports.sql`
     CREATE TABLE IF NOT EXISTS votes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       poll_id UUID REFERENCES polls(id) ON DELETE CASCADE,
@@ -46,7 +49,7 @@ export async function initDB() {
     )
   `;
 
-  await sql`
+  await exports.sql`
     CREATE TABLE IF NOT EXISTS qa_posts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
@@ -60,7 +63,9 @@ export async function initDB() {
       is_hidden BOOLEAN DEFAULT false,
       created_at TIMESTAMPTZ DEFAULT now()
     )
-  await sql`
+  `;
+
+  await exports.sql`
     CREATE TABLE IF NOT EXISTS members (
       room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
       session_id TEXT NOT NULL,
@@ -69,4 +74,4 @@ export async function initDB() {
       PRIMARY KEY (room_id, session_id)
     )
   `;
-}
+};

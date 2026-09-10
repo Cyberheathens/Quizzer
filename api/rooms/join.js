@@ -1,8 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from '../_db';
-import { fire } from '../_pusher';
+const { sql, initDB } = require('../_db');
+const { fire } = require('../_pusher');
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
@@ -41,4 +40,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

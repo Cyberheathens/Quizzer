@@ -1,12 +1,11 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from './_db';
+const { sql, initDB } = require('./_db');
 
-function intervalFor(count: number, hasOpen: boolean): number {
+function intervalFor(count, hasOpen) {
   if (hasOpen) return 5000;
   return count > 150 ? 30000 : 2500;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
@@ -39,10 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       op AS (
         SELECT EXISTS(SELECT 1 FROM polls WHERE room_id = ${roomId} AND phase = 'voting_open') AS has_open
       )
-      SELECT (SELECT count FROM cnt) AS participants,
-             (SELECT polls FROM pls) AS polls,
-             (SELECT qa FROM qs) AS qa,
-             (SELECT op.has_open) AS has_open
+      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open FROM cnt, pls, qs, op
     `;
 
     const r = rows[0];
@@ -55,4 +51,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

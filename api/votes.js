@@ -1,8 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from './_db';
-import { fire } from './_pusher';
+const { sql, initDB } = require('../_db');
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
@@ -11,13 +9,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Poll ID, session ID, and selections required' });
     }
 
-    // Check if already voted
     const existing = await sql`SELECT id FROM votes WHERE poll_id = ${pollId} AND session_id = ${sessionId}`;
     if (existing.length > 0) {
       return res.status(409).json({ error: 'Already voted' });
     }
 
-    // Check poll is open
     const polls = await sql`SELECT * FROM polls WHERE id = ${pollId}`;
     if (polls.length === 0) {
       return res.status(404).json({ error: 'Poll not found' });
@@ -33,7 +29,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Results are aggregated on phase lock (PATCH /polls) — no per-vote
     // aggregation keeps a 1000-vote surge at 1 query per vote.
-
     return res.status(200).json({ success: true });
   }
 
@@ -44,10 +39,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
-    const counts: Record<number, number> = {};
-    votes.forEach((v: any) => {
+    const counts = {};
+    votes.forEach((v) => {
       const opts = Array.isArray(v.selected_options) ? v.selected_options : [];
-      opts.forEach((o: number) => {
+      opts.forEach((o) => {
         counts[o] = (counts[o] || 0) + 1;
       });
     });
@@ -61,4 +56,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

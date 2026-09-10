@@ -1,8 +1,14 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from './_db';
-import { fire } from './_pusher';
+const { sql, initDB } = require('../_db');
+const { fire } = require('../_pusher');
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+function parseOptions(rows) {
+  return rows.map((p) => ({
+    ...p,
+    options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options,
+  }));
+}
+
+module.exports = async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
@@ -18,12 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ${roomId},
         ${question},
         ${pollType || 'single'},
-        ${JSON.stringify(options.map((o: any, i: number) => ({ id: i, text: o.text, is_correct: o.isCorrect })))},
-        ${options.map((o: any, i: number) => o.isCorrect ? i : -1).filter((i: number) => i >= 0)},
+        ${JSON.stringify(options.map((o, i) => ({ id: i, text: o.text, is_correct: o.isCorrect })))},
+        ${options.map((o, i) => (o.isCorrect ? i : -1)).filter((i) => i >= 0)},
         ${timerSeconds || null},
         ${questionImage || null},
         ${phase},
-        CASE WHEN ${launch ? true : false} THEN now() ELSE NULL END
+        CASE WHEN ${!!launch} THEN now() ELSE NULL END
       )
       RETURNING *
     `;
@@ -51,12 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? await sql`SELECT * FROM polls WHERE room_id = ${roomId} ORDER BY created_at DESC`
       : await sql`SELECT * FROM polls WHERE room_id = ${roomId} AND phase != 'draft' ORDER BY created_at DESC`;
 
-    const polls = rows.map((p: any) => ({
-      ...p,
-      options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options,
-    }));
-
-    return res.status(200).json(polls);
+    return res.status(200).json(parseOptions(rows));
   }
 
   if (req.method === 'PATCH') {
@@ -65,15 +66,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Poll ID required' });
     }
 
-    // Launch a draft
     if (action === 'launch') {
       const current = await sql`SELECT phase FROM polls WHERE id = ${pollId}`;
       if (current.length === 0) return res.status(404).json({ error: 'Poll not found' });
       if (current[0].phase !== 'draft') return res.status(409).json({ error: 'Poll already launched' });
 
-      const result = await sql`
-        UPDATE polls SET phase = 'voting_open', launched_at = now() WHERE id = ${pollId} RETURNING *
-      `;
+      const result = await sql`UPDATE polls SET phase = 'voting_open', launched_at = now() WHERE id = ${pollId} RETURNING *`;
       const poll = result[0];
       poll.options = typeof poll.options === 'string' ? JSON.parse(poll.options) : poll.options;
 
@@ -84,17 +82,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(poll);
     }
 
-    // Edit a draft
     if (action === 'update') {
       const current = await sql`SELECT phase FROM polls WHERE id = ${pollId}`;
       if (current.length === 0) return res.status(404).json({ error: 'Poll not found' });
       if (current[0].phase !== 'draft') return res.status(409).json({ error: 'Only drafts can be edited' });
 
       const opts = options
-        ? JSON.stringify(options.map((o: any, i: number) => ({ id: i, text: o.text, is_correct: o.isCorrect })))
+        ? JSON.stringify(options.map((o, i) => ({ id: i, text: o.text, is_correct: o.isCorrect })))
         : null;
       const correct = options
-        ? options.map((o: any, i: number) => o.isCorrect ? i : -1).filter((i: number) => i >= 0)
+        ? options.map((o, i) => (o.isCorrect ? i : -1)).filter((i) => i >= 0)
         : null;
 
       const result = await sql`
@@ -111,7 +108,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(poll);
     }
 
-    // Phase transitions (voting_locked / results_shown)
     if (phase) {
       const result = await sql`UPDATE polls SET phase = ${phase} WHERE id = ${pollId} RETURNING *`;
       if (result.length === 0) return res.status(404).json({ error: 'Poll not found' });
@@ -119,13 +115,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const poll = result[0];
       poll.options = typeof poll.options === 'string' ? JSON.parse(poll.options) : poll.options;
 
-      let voteResults: any[] = [];
+      let voteResults = [];
       if (phase === 'voting_locked' || phase === 'results_shown') {
         const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
-        const counts: Record<number, number> = {};
-        votes.forEach((v: any) => {
+        const counts = {};
+        votes.forEach((v) => {
           const opts = Array.isArray(v.selected_options) ? v.selected_options : [];
-          opts.forEach((o: number) => {
+          opts.forEach((o) => {
             counts[o] = (counts[o] || 0) + 1;
           });
         });
@@ -163,4 +159,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

@@ -1,15 +1,13 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from './_db';
-import { fire } from './_pusher';
+const { sql, initDB } = require('./_db');
 
-function generateCode(): string {
+function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
@@ -31,7 +29,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Rooms start closed (draft) — host opens when the session begins
     const result = await sql`
       INSERT INTO rooms (code, name, host_name, passcode, status)
       VALUES (${code}, ${name}, ${hostName}, ${passcode || null}, 'draft')
@@ -80,4 +77,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

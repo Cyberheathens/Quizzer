@@ -1,8 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from './_db';
-import { fire } from './_pusher';
+const { sql, initDB } = require('../_db');
+const { fire } = require('../_pusher');
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
@@ -23,7 +22,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const post = result[0];
 
-    // Get room code
     const rooms = await sql`SELECT code FROM rooms WHERE id = ${roomId}`;
     if (rooms.length > 0) {
       await fire(`room-${rooms[0].code}`, 'qa:new', post);
@@ -78,7 +76,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const post = result[0];
 
-    // Get room code
     const posts = await sql`SELECT room_id FROM qa_posts WHERE id = ${postId}`;
     if (posts.length > 0) {
       const rooms = await sql`SELECT code FROM rooms WHERE id = ${posts[0].room_id}`;
@@ -91,4 +88,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};
