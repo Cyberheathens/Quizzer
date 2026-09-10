@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const poll = result[0];
     poll.options = typeof poll.options === 'string' ? JSON.parse(poll.options) : poll.options;
 
-    // Get vote results if showing results
+    // Aggregate results for locked/revealed phases
     let voteResults: any[] = [];
     if (phase === 'voting_locked' || phase === 'results_shown') {
       const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
@@ -94,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(200).json(poll);
+    return res.status(200).json({ ...poll, voteResults });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

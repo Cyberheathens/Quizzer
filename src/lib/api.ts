@@ -68,4 +68,4 @@ export const heartbeatParticipant = (data: {
   roomId: string;
   sessionId: string;
   displayName?: string;
-}) => fetchJSON<{ count: number }>(`${BASE}/participants`, { method: 'POST', body: JSON.stringify(data) });
+}) => fetchJSON<{ count: number; intervalMs?: number }>(`${BASE}/participants`, { method: 'POST', body: JSON.stringify(data) });

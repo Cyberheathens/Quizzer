@@ -151,7 +151,7 @@ export default function VotingCard({
                     <Tooltip
                       contentStyle={{ background: '#150d1d', border: '1px solid rgb(255 240 236 / 10%)', borderRadius: 12 }}
                       labelStyle={{ color: '#f1f5f9' }}
-                      formatter={(value: number) => [`${value} votes`, '']}
+                      formatter={(value: any) => [`${value} votes`, '']}
                     />
                     <Bar dataKey="value" radius={[0, 8, 8, 0]}>
                       {chartData.map((_, i) => (

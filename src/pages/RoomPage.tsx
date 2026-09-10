@@ -11,8 +11,6 @@ import StageView from '@/components/stage/StageView';
 import JoinDialog from '@/components/JoinDialog';
 import toast from 'react-hot-toast';
 
-const REFRESH_MS = 2500;
-
 export default function RoomPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -48,7 +46,13 @@ export default function RoomPage() {
         }
 
         if (alive) {
-          interval = setInterval(() => refresh(r), REFRESH_MS);
+          const schedule = (ms: number) => {
+            interval = setTimeout(async () => {
+              const next = await refresh(r);
+              if (alive) schedule(next ?? 2500);
+            }, ms);
+          };
+          schedule(2500);
         }
       } catch {
         toast.error('Room not found');
@@ -58,8 +62,8 @@ export default function RoomPage() {
       }
     };
 
-    const refresh = async (r: Room) => {
-      if (!alive) return;
+    const refresh = async (r: Room): Promise<number> => {
+      if (!alive) return 2500;
       try {
         const [polls, posts, participants] = await Promise.all([
           getPolls(r.id).catch(() => null),
@@ -82,9 +86,13 @@ export default function RoomPage() {
           }
         }
         if (posts) setQAPosts(posts);
-        if (participants) setParticipantCount(participants.count);
+        if (participants) {
+          setParticipantCount(participants.count);
+          return participants.intervalMs ?? 2500;
+        }
+        return 2500;
       } catch {
-        // transient network error — next tick retries
+        return 5000;
       }
     };
 
@@ -92,7 +100,10 @@ export default function RoomPage() {
 
     const channel = subscribeToRoom(code);
     channel.bind('poll:new', (data: any) => addPoll(data));
-    channel.bind('poll:update', (data: any) => updatePoll(data));
+    channel.bind('poll:update', (data: any) => {
+      updatePoll(data);
+      if (data.voteResults) setVoteResults(data.id, data.voteResults);
+    });
     channel.bind('qa:new', (data: any) => addQAPost(data));
     channel.bind('qa:update', (data: any) => updateQAPost(data));
     channel.bind('participants', (data: any) => setParticipantCount(data.count));

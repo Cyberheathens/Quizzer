@@ -31,27 +31,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       VALUES (${pollId}, ${sessionId}, ${selectedOptions})
     `;
 
-    // Get updated results
-    const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
-    const counts: Record<number, number> = {};
-    votes.forEach((v: any) => {
-      const opts = Array.isArray(v.selected_options) ? v.selected_options : [];
-      opts.forEach((o: number) => {
-        counts[o] = (counts[o] || 0) + 1;
-      });
-    });
-
-    const results = Object.entries(counts).map(([idx, count]) => ({
-      optionIndex: parseInt(idx),
-      count,
-    }));
-
-    // Broadcast updated results
-    const poll = polls[0];
-    const rooms = await sql`SELECT code FROM rooms WHERE id = ${poll.room_id}`;
-    if (rooms.length > 0) {
-      await fire(`room-${rooms[0].code}`, 'vote:update', { pollId, results });
-    }
+    // Results are aggregated on phase lock (PATCH /polls) — no per-vote
+    // aggregation keeps a 1000-vote surge at 1 query per vote.
 
     return res.status(200).json({ success: true });
   }

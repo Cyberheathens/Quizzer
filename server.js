@@ -119,7 +119,7 @@ app.post('/api/rooms/join', async (req, res) => {
     await sql`INSERT INTO members (room_id, session_id, display_name) VALUES (${room.id}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()`;
     const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${room.id} AND last_seen > now() - interval '5 minutes'`;
     await fire(`room-${room.code}`, 'participants', { count: counts[0].count });
-    res.json({ room, sessionId, participantCount: counts[0].count });
+    res.json({ room, sessionId, participantCount: counts[0].count, intervalMs: intervalFor(counts[0].count) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -154,12 +154,21 @@ app.patch('/api/polls', async (req, res) => {
     const result = await sql`UPDATE polls SET phase = ${phase} WHERE id = ${pollId} RETURNING *`;
     if (result.length === 0) return res.status(404).json({ error: 'Poll not found' });
     const poll = { ...result[0], options: typeof result[0].options === 'string' ? JSON.parse(result[0].options) : result[0].options };
+    let voteResults = [];
+    if (phase === 'voting_locked' || phase === 'results_shown') {
+      const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
+      const counts = {};
+      votes.forEach((v) => {
+        (Array.isArray(v.selected_options) ? v.selected_options : []).forEach((o) => { counts[o] = (counts[o] || 0) + 1; });
+      });
+      voteResults = Object.entries(counts).map(([idx, count]) => ({ optionIndex: parseInt(idx), count }));
+    }
     const polls = await sql`SELECT room_id FROM polls WHERE id = ${pollId}`;
     if (polls.length > 0) {
       const rooms = await sql`SELECT code FROM rooms WHERE id = ${polls[0].room_id}`;
-      if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:update', poll);
+      if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:update', { ...poll, voteResults });
     }
-    res.json(poll);
+    res.json({ ...poll, voteResults });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -187,14 +196,6 @@ app.post('/api/votes', async (req, res) => {
     if (polls.length === 0) return res.status(404).json({ error: 'Poll not found' });
     if (polls[0].phase !== 'voting_open') return res.status(403).json({ error: 'Voting is closed' });
     await sql`INSERT INTO votes (poll_id, session_id, selected_options) VALUES (${pollId}, ${sessionId}, ${selectedOptions})`;
-    const votes = await sql`SELECT selected_options FROM votes WHERE poll_id = ${pollId}`;
-    const counts = {};
-    votes.forEach((v) => {
-      (Array.isArray(v.selected_options) ? v.selected_options : []).forEach((o) => { counts[o] = (counts[o] || 0) + 1; });
-    });
-    const results = Object.entries(counts).map(([idx, count]) => ({ optionIndex: parseInt(idx), count }));
-    const rooms = await sql`SELECT code FROM rooms WHERE id = ${polls[0].room_id}`;
-    if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'vote:update', { pollId, results });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -250,7 +251,7 @@ app.get('/api/participants', async (req, res) => {
     const { roomId } = req.query;
     if (!roomId) return res.status(400).json({ error: 'Room ID required' });
     const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${String(roomId)} AND last_seen > now() - interval '5 minutes'`;
-    res.json({ count: counts[0].count });
+    res.json({ count: counts[0].count, intervalMs: intervalFor(counts[0].count) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -258,11 +259,11 @@ app.post('/api/participants', async (req, res) => {
   try {
     const { roomId, sessionId, displayName } = req.body;
     if (!roomId || !sessionId) return res.status(400).json({ error: 'Room ID and session ID required' });
-    await sql`INSERT INTO members (room_id, session_id, display_name) VALUES (${roomId}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()`;
-    const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${roomId} AND last_seen > now() - interval '5 minutes'`;
-    res.json({ count: counts[0].count });
+    const counts = await sql`WITH upsert AS (INSERT INTO members (room_id, session_id, display_name) VALUES (${roomId}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now() RETURNING 1) SELECT count(*)::int AS count FROM members WHERE room_id = ${roomId} AND last_seen > now() - interval '5 minutes'`;
+    res.json({ count: counts[0].count, intervalMs: counts[0].count > 150 ? 30000 : 2500 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+const intervalFor = (count) => (count > 150 ? 30000 : 2500);
 
 // Pusher auth
 app.post('/api/pusher/auth', (req, res) => {
