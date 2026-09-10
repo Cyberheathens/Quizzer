@@ -104,8 +104,29 @@ app.post('/api/rooms', async (req, res) => {
     const { name, hostName, passcode } = req.body;
     if (!name || !hostName) return res.status(400).json({ error: 'Name and host name required' });
     let code = generateCode();
-    const result = await sql`INSERT INTO rooms (code, name, host_name, passcode) VALUES (${code}, ${name}, ${hostName}, ${passcode || null}) RETURNING *`;
+    const result = await sql`INSERT INTO rooms (code, name, host_name, passcode, status) VALUES (${code}, ${name}, ${hostName}, ${passcode || null}, 'draft') RETURNING *`;
     res.status(201).json(result[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/rooms', async (req, res) => {
+  try {
+    const { code, action } = req.body;
+    if (!code || !action) return res.status(400).json({ error: 'Code and action required' });
+    const upper = String(code).toUpperCase();
+    if (action === 'open') {
+      const result = await sql`UPDATE rooms SET status = 'open' WHERE code = ${upper} AND is_active = true RETURNING *`;
+      if (result.length === 0) return res.status(404).json({ error: 'Room not found' });
+      await fire(`room-${upper}`, 'room:open', { code: upper });
+      return res.json(result[0]);
+    }
+    if (action === 'end') {
+      const result = await sql`UPDATE rooms SET is_active = false, status = 'draft' WHERE code = ${upper} RETURNING *`;
+      if (result.length === 0) return res.status(404).json({ error: 'Room not found' });
+      await fire(`room-${upper}`, 'room:ended', {});
+      return res.json(result[0]);
+    }
+    return res.status(400).json({ error: 'Unknown action' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -115,6 +136,7 @@ app.post('/api/rooms/join', async (req, res) => {
     const rooms = await sql`SELECT * FROM rooms WHERE code = ${String(code).toUpperCase()} AND is_active = true`;
     if (rooms.length === 0) return res.status(404).json({ error: 'Room not found' });
     const room = rooms[0];
+    if (room.status && room.status !== 'open') return res.status(403).json({ error: 'Room not open yet' });
     if (room.passcode && room.passcode !== passcode) return res.status(403).json({ error: 'Invalid passcode' });
     await sql`INSERT INTO members (room_id, session_id, display_name) VALUES (${room.id}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()`;
     const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${room.id} AND last_seen > now() - interval '5 minutes'`;
@@ -128,7 +150,10 @@ app.get('/api/polls', async (req, res) => {
   try {
     const { roomId } = req.query;
     if (!roomId) return res.status(400).json({ error: 'Room ID required' });
-    const result = await sql`SELECT * FROM polls WHERE room_id = ${String(roomId)} ORDER BY created_at DESC`;
+    const includeDrafts = req.query.includeDrafts === '1';
+    const result = includeDrafts
+      ? await sql`SELECT * FROM polls WHERE room_id = ${String(roomId)} ORDER BY created_at DESC`
+      : await sql`SELECT * FROM polls WHERE room_id = ${String(roomId)} AND phase != 'draft' ORDER BY created_at DESC`;
     res.json(result.map((p) => ({ ...p, options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -139,18 +164,45 @@ app.post('/api/polls', async (req, res) => {
     if (!roomId || !question || !options || options.length < 2) return res.status(400).json({ error: 'Missing fields' });
     const opts = options.map((o, i) => ({ id: i, text: o.text, is_correct: o.isCorrect }));
     const correct = options.map((o, i) => o.isCorrect ? i : -1).filter((i) => i >= 0);
-    const result = await sql`INSERT INTO polls (room_id, question, poll_type, options, correct_answers, timer_seconds) VALUES (${roomId}, ${question}, ${pollType || 'single'}, ${JSON.stringify(opts)}, ${correct}, ${timerSeconds || null}) RETURNING *`;
+    const launch = !!req.body.launch;
+    const result = await sql`INSERT INTO polls (room_id, question, poll_type, options, correct_answers, timer_seconds, question_image, phase, launched_at) VALUES (${roomId}, ${question}, ${pollType || 'single'}, ${JSON.stringify(opts)}, ${correct}, ${timerSeconds || null}, ${req.body.questionImage || null}, ${launch ? 'voting_open' : 'draft'}, CASE WHEN ${!!launch} THEN now() ELSE NULL END) RETURNING *`;
     const poll = { ...result[0], options: typeof result[0].options === 'string' ? JSON.parse(result[0].options) : result[0].options };
-    const rooms = await sql`SELECT code FROM rooms WHERE id = ${roomId}`;
-    if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:new', poll);
+    if (launch) {
+      const rooms = await sql`SELECT code FROM rooms WHERE id = ${roomId}`;
+      if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:new', poll);
+    }
     res.status(201).json(poll);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.patch('/api/polls', async (req, res) => {
   try {
-    const { pollId, phase } = req.body;
-    if (!pollId || !phase) return res.status(400).json({ error: 'Poll ID and phase required' });
+    const { pollId, phase, action, question, options, questionImage, timerSeconds } = req.body;
+    if (!pollId) return res.status(400).json({ error: 'Poll ID required' });
+
+    if (action === 'launch') {
+      const cur = await sql`SELECT phase FROM polls WHERE id = ${pollId}`;
+      if (cur.length === 0) return res.status(404).json({ error: 'Poll not found' });
+      if (cur[0].phase !== 'draft') return res.status(409).json({ error: 'Poll already launched' });
+      const result = await sql`UPDATE polls SET phase = 'voting_open', launched_at = now() WHERE id = ${pollId} RETURNING *`;
+      const poll = { ...result[0], options: typeof result[0].options === 'string' ? JSON.parse(result[0].options) : result[0].options };
+      const rooms = await sql`SELECT code FROM rooms WHERE id = ${poll.room_id}`;
+      if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:new', poll);
+      return res.json(poll);
+    }
+
+    if (action === 'update') {
+      const cur = await sql`SELECT phase FROM polls WHERE id = ${pollId}`;
+      if (cur.length === 0) return res.status(404).json({ error: 'Poll not found' });
+      if (cur[0].phase !== 'draft') return res.status(409).json({ error: 'Only drafts can be edited' });
+      const opts = options ? JSON.stringify(options.map((o, i) => ({ id: i, text: o.text, is_correct: o.isCorrect }))) : null;
+      const correct = options ? options.map((o, i) => o.isCorrect ? i : -1).filter((i) => i >= 0) : null;
+      const result = await sql`UPDATE polls SET question = COALESCE(${question ?? null}, question), options = COALESCE(${opts}, options), correct_answers = COALESCE(${correct}, correct_answers), question_image = ${questionImage ?? null}, timer_seconds = ${timerSeconds ?? null} WHERE id = ${pollId} RETURNING *`;
+      const poll = { ...result[0], options: typeof result[0].options === 'string' ? JSON.parse(result[0].options) : result[0].options };
+      return res.json(poll);
+    }
+
+    if (!phase) return res.status(400).json({ error: 'phase or action required' });
     const result = await sql`UPDATE polls SET phase = ${phase} WHERE id = ${pollId} RETURNING *`;
     if (result.length === 0) return res.status(404).json({ error: 'Poll not found' });
     const poll = { ...result[0], options: typeof result[0].options === 'string' ? JSON.parse(result[0].options) : result[0].options };
@@ -169,6 +221,18 @@ app.patch('/api/polls', async (req, res) => {
       if (rooms.length > 0) await fire(`room-${rooms[0].code}`, 'poll:update', { ...poll, voteResults });
     }
     res.json({ ...poll, voteResults });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/polls', async (req, res) => {
+  try {
+    const pollId = req.query.pollId;
+    if (!pollId) return res.status(400).json({ error: 'Poll ID required' });
+    const cur = await sql`SELECT phase FROM polls WHERE id = ${String(pollId)}`;
+    if (cur.length === 0) return res.status(404).json({ error: 'Poll not found' });
+    if (cur[0].phase !== 'draft') return res.status(409).json({ error: 'Only drafts can be deleted' });
+    await sql`DELETE FROM polls WHERE id = ${String(pollId)}`;
+    res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -278,7 +342,7 @@ app.post('/api/state', async (req, res) => {
         RETURNING 1
       ),
       cnt AS (SELECT count(*)::int AS count FROM members WHERE room_id = ${roomId} AND last_seen > now() - interval '5 minutes'),
-      pls AS (SELECT COALESCE(json_agg(pl), '[]'::json) AS polls FROM (SELECT * FROM polls WHERE room_id = ${roomId} ORDER BY created_at DESC LIMIT 20) pl),
+      pls AS (SELECT COALESCE(json_agg(pl), '[]'::json) AS polls FROM (SELECT * FROM polls WHERE room_id = ${roomId} AND phase != 'draft' ORDER BY created_at DESC LIMIT 20) pl),
       qs AS (SELECT COALESCE(json_agg(q), '[]'::json) AS qa FROM (SELECT * FROM qa_posts WHERE room_id = ${roomId} ORDER BY created_at DESC LIMIT 100) q),
       op AS (SELECT EXISTS(SELECT 1 FROM polls WHERE room_id = ${roomId} AND phase = 'voting_open') AS has_open)
       SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open FROM cnt, pls, qs, op

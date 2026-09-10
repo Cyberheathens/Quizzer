@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Zap, Copy, Check, ExternalLink } from 'lucide-react';
-import { createRoom } from '@/lib/api';
+import { ArrowLeft, Copy, Check, DoorOpen } from 'lucide-react';
+import { createRoom, roomAction } from '@/lib/api';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 
@@ -27,8 +27,9 @@ export default function CreateRoomPage() {
         hostName: hostName.trim(),
         passcode: passcode.trim() || undefined,
       });
+      localStorage.setItem(`room_${room.code}_host`, 'true');
       setCreatedRoom({ code: room.code, name: room.name });
-      toast.success('Room created!');
+      toast.success('Room created — it starts closed');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create room');
     } finally {
@@ -74,20 +75,30 @@ export default function CreateRoomPage() {
             </button>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2">
             <button
-              onClick={() => navigate('/')}
-              className="flex-1 px-4 py-3 rounded-xl glass hover:bg-bg-card-hover transition-all text-sm"
+              onClick={async () => {
+                try {
+                  await roomAction(createdRoom.code, 'open');
+                  toast.success('Room is open — share the code!');
+                  navigate(`/room/${createdRoom.code}/host`);
+                } catch (err: any) {
+                  toast.error(err.message || 'Failed to open');
+                }
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-ramp-x text-[#14060e] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all glow-ramp"
             >
-              Back
+              <DoorOpen className="w-4 h-4" />
+              Open Room & Start Hosting
             </button>
             <button
               onClick={() => navigate(`/room/${createdRoom.code}/host`)}
-              className="flex-1 px-4 py-3 rounded-xl bg-ramp-x text-[#14060e] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all glow-ramp"
+              className="w-full px-4 py-3 rounded-xl btn-ghost text-sm"
             >
-              Open Console <ExternalLink className="w-4 h-4" />
+              Keep Closed — Build Quiz First
             </button>
           </div>
+          <p className="text-xs text-text-muted mt-3">Rooms start closed. Open when your audience is ready.</p>
         </motion.div>
 
         <p className="mt-6 text-text-muted text-sm">

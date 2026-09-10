@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ),
       pls AS (
         SELECT COALESCE(json_agg(pl), '[]'::json) AS polls FROM (
-          SELECT * FROM polls WHERE room_id = ${roomId} ORDER BY created_at DESC LIMIT 20
+          SELECT * FROM polls WHERE room_id = ${roomId} AND phase != 'draft' ORDER BY created_at DESC LIMIT 20
         ) pl
       ),
       qs AS (

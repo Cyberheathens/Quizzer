@@ -31,6 +31,8 @@ export const createPoll = (data: {
   pollType: string;
   options: { text: string; isCorrect: boolean }[];
   timerSeconds?: number;
+  questionImage?: string;
+  launch?: boolean;
 }) => fetchJSON<Poll>(`${BASE}/polls`, { method: 'POST', body: JSON.stringify(data) });
 
 export const getPolls = (roomId: string) =>
@@ -74,4 +76,22 @@ export const getRoomState = (data: {
   roomId: string;
   sessionId: string;
   displayName?: string;
+  includeDrafts?: boolean;
 }) => fetchJSON<{ participants: number; polls: Poll[]; qa: QAPost[]; intervalMs: number }>(`${BASE}/state`, { method: 'POST', body: JSON.stringify(data) });
+
+export const roomAction = (code: string, action: 'open' | 'end') =>
+  fetchJSON<Room>(`${BASE}/rooms`, { method: 'PATCH', body: JSON.stringify({ code, action }) });
+
+export const launchPoll = (pollId: string) =>
+  fetchJSON<Poll>(`${BASE}/polls`, { method: 'PATCH', body: JSON.stringify({ pollId, action: 'launch' }) });
+
+export const updateDraftPoll = (data: {
+  pollId: string;
+  question?: string;
+  options?: { text: string; isCorrect: boolean }[];
+  questionImage?: string | null;
+  timerSeconds?: number | null;
+}) => fetchJSON<Poll>(`${BASE}/polls`, { method: 'PATCH', body: JSON.stringify({ ...data, action: 'update' }) });
+
+export const deletePoll = (pollId: string) =>
+  fetchJSON<{ success: boolean }>(`${BASE}/polls?pollId=${pollId}`, { method: 'DELETE' });

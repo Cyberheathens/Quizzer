@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, initDB } from './_db';
-
+import { fire } from './_pusher';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -31,14 +31,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Rooms start closed (draft) — host opens when the session begins
     const result = await sql`
-      INSERT INTO rooms (code, name, host_name, passcode)
-      VALUES (${code}, ${name}, ${hostName}, ${passcode || null})
+      INSERT INTO rooms (code, name, host_name, passcode, status)
+      VALUES (${code}, ${name}, ${hostName}, ${passcode || null}, 'draft')
       RETURNING *
     `;
 
-    const room = result[0];
-    return res.status(201).json(room);
+    return res.status(201).json(result[0]);
   }
 
   if (req.method === 'GET') {
@@ -53,6 +53,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json(result[0]);
+  }
+
+  if (req.method === 'PATCH') {
+    const { code, action } = req.body;
+    if (!code || !action) {
+      return res.status(400).json({ error: 'Code and action required' });
+    }
+    const upper = String(code).toUpperCase();
+
+    if (action === 'open') {
+      const result = await sql`UPDATE rooms SET status = 'open' WHERE code = ${upper} AND is_active = true RETURNING *`;
+      if (result.length === 0) return res.status(404).json({ error: 'Room not found' });
+      await fire(`room-${upper}`, 'room:open', { code: upper });
+      return res.status(200).json(result[0]);
+    }
+
+    if (action === 'end') {
+      const result = await sql`UPDATE rooms SET is_active = false, status = 'draft' WHERE code = ${upper} RETURNING *`;
+      if (result.length === 0) return res.status(404).json({ error: 'Room not found' });
+      await fire(`room-${upper}`, 'room:ended', {});
+      return res.status(200).json(result[0]);
+    }
+
+    return res.status(400).json({ error: 'Unknown action' });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

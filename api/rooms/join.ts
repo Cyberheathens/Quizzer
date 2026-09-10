@@ -17,6 +17,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const room = rooms[0];
+    if (room.status && room.status !== 'open') {
+      return res.status(403).json({ error: 'Room not open yet' });
+    }
     if (room.passcode && room.passcode !== passcode) {
       return res.status(403).json({ error: 'Invalid passcode' });
     }

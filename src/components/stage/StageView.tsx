@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
-import { Zap, Users, CheckCircle2, Cloud, MessageSquare, Trophy, BarChart3 } from 'lucide-react';
+import { Zap, Users, CheckCircle2, Cloud, MessageSquare, Trophy, BarChart3, Timer } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useParams } from 'react-router-dom';
 
@@ -12,6 +12,19 @@ export default function StageView() {
   const { code } = useParams<{ code: string }>();
   const { room, currentPoll, qaPosts, participantCount, voteResults } = useStore();
   const [view, setView] = useState<'poll' | 'qa' | 'cloud' | 'qr'>('qr');
+  const [now, setNow] = useState(Date.now());
+
+  const deadline = currentPoll?.launched_at && currentPoll?.timer_seconds
+    ? new Date(currentPoll.launched_at).getTime() + currentPoll.timer_seconds * 1000
+    : null;
+  const remaining = deadline && currentPoll?.phase === 'voting_open'
+    ? Math.max(0, Math.ceil((deadline - now) / 1000))
+    : null;
+  useEffect(() => {
+    if (!deadline || currentPoll?.phase !== 'voting_open') return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [deadline, currentPoll?.phase]);
 
   const results = currentPoll ? voteResults[currentPoll.id] : undefined;
   const totalVotes = results?.reduce((sum, r) => sum + r.count, 0) || 0;
@@ -136,8 +149,21 @@ export default function StageView() {
                   {currentPoll.poll_type === 'multi' ? 'Multi-Select' : 'Single Choice'}
                 </span>
                 <h2 className="text-4xl font-bold mt-3">{currentPoll.question}</h2>
-                {totalVotes > 0 && (
-                  <p className="text-lg text-text-secondary mt-2">{totalVotes} votes</p>
+                {currentPoll.question_image && (
+                  <img
+                    src={currentPoll.question_image}
+                    alt=""
+                    className="mt-6 mx-auto max-h-72 object-contain rounded-2xl bg-bg-elevated p-2"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+                {remaining !== null && remaining > 0 && (
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <Timer className={`w-8 h-8 ${remaining <= 5 ? 'text-magenta' : 'text-flame'}`} />
+                    <span className={`text-6xl font-bold font-mono ${remaining <= 5 ? 'text-magenta' : 'text-flame'}`}>
+                      0:{String(remaining).padStart(2, '0')}
+                    </span>
+                  </div>
                 )}
               </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Routes, Route, useNavigate } from 'react-router-dom';
+import { useParams, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getRoom, getPolls, getQAPosts, getVoteResults, getRoomState } from '@/lib/api';
 import type { Room } from '@/types';
@@ -14,6 +14,8 @@ import toast from 'react-hot-toast';
 export default function RoomPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHost = location.pathname.endsWith('/host');
   const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setConnected } = useStore();
   const [loading, setLoading] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
@@ -37,7 +39,6 @@ export default function RoomPage() {
         setPolls(polls);
         setQAPosts(posts);
 
-        const isHost = localStorage.getItem(`room_${code}_host`) === 'true';
         if (!isHost) {
           const joined = localStorage.getItem(`room_${code}_joined`);
           if (!joined) {
@@ -65,7 +66,7 @@ export default function RoomPage() {
     const refresh = async (r: Room): Promise<number> => {
       if (!alive) return 2500;
       try {
-        const s = await getRoomState({ roomId: r.id, sessionId, displayName });
+        const s = await getRoomState({ roomId: r.id, sessionId, displayName, includeDrafts: isHost });
 
         setQAPosts(s.qa || []);
         setParticipantCount(s.participants);
@@ -96,7 +97,11 @@ export default function RoomPage() {
     loadRoom();
 
     const channel = subscribeToRoom(code);
-    channel.bind('poll:new', (data: any) => addPoll(data));
+    channel.bind('poll:new', (data: any) => {
+      const st = useStore.getState();
+      if (st.polls.some((p) => p.id === data.id)) st.updatePoll(data);
+      else st.addPoll(data);
+    });
     channel.bind('poll:update', (data: any) => {
       updatePoll(data);
       if (data.voteResults) setVoteResults(data.id, data.voteResults);
@@ -104,6 +109,10 @@ export default function RoomPage() {
     channel.bind('qa:new', (data: any) => addQAPost(data));
     channel.bind('qa:update', (data: any) => updateQAPost(data));
     channel.bind('participants', (data: any) => setParticipantCount(data.count));
+    channel.bind('room:open', () => {
+      toast.success('Room is open!');
+      if (room) useStore.getState().setRoom({ ...room, status: 'open' });
+    });
     channel.bind('vote:update', (data: any) => setVoteResults(data.pollId, data.results));
     channel.bind('room:ended', () => {
       toast('Room has ended');

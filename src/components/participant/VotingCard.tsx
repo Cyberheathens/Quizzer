@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { Check, X } from 'lucide-react';
+import { Check, X, Timer } from 'lucide-react';
 import type { Poll } from '@/types';
 
 interface VotingCardProps {
@@ -26,7 +26,30 @@ export default function VotingCard({
   showResults,
 }: VotingCardProps) {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
+  const [now, setNow] = useState(Date.now());
+  const autoSubmitted = useRef(false);
   const isMulti = poll.poll_type === 'multi';
+
+  const deadline = poll.launched_at && poll.timer_seconds
+    ? new Date(poll.launched_at).getTime() + poll.timer_seconds * 1000
+    : null;
+  const remaining = deadline && poll.phase === 'voting_open'
+    ? Math.max(0, Math.ceil((deadline - now) / 1000))
+    : null;
+  const expired = remaining !== null && remaining <= 0;
+
+  useEffect(() => {
+    if (poll.phase !== 'voting_open' || !deadline) return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [poll.phase, deadline]);
+
+  useEffect(() => {
+    if (expired && !hasVoted && selectedOptions.length > 0 && !autoSubmitted.current && onVote) {
+      autoSubmitted.current = true;
+      onVote();
+    }
+  }, [expired, hasVoted, selectedOptions.length, onVote]);
   const totalVotes = results?.reduce((sum, r) => sum + r.count, 0) || 0;
 
   const chartData = poll.options.map((opt, i) => {
@@ -71,6 +94,35 @@ export default function VotingCard({
           )}
         </div>
         <h2 className="text-lg font-bold">{poll.question}</h2>
+        {poll.question_image && (
+          <img
+            src={poll.question_image}
+            alt=""
+            loading="lazy"
+            className="mt-3 w-full max-h-56 object-contain rounded-xl bg-bg-elevated"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        )}
+        {remaining !== null && !expired && (
+          <div className="mt-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Timer className="w-4 h-4 text-amber" />
+              <span className={`font-mono font-bold ${remaining <= 5 ? 'text-magenta' : 'text-flame'}`}>
+                0:{String(remaining).padStart(2, '0')}
+              </span>
+              <span className="text-xs text-text-muted">left to vote</span>
+            </div>
+            <div className="h-1 rounded-full bg-bg-elevated mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-ramp-x transition-all duration-500"
+                style={{ width: `${Math.min(100, (remaining / (poll.timer_seconds || 1)) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+        {expired && poll.phase === 'voting_open' && (
+          <p className="mt-3 text-xs text-amber">Time's up — waiting for host to reveal</p>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -107,7 +159,7 @@ export default function VotingCard({
             {!hasVoted && (
               <button
                 onClick={onVote}
-                disabled={selectedOptions.length === 0}
+                disabled={selectedOptions.length === 0 || expired}
                 className="w-full mt-3 px-4 py-3 rounded-xl bg-ramp-x text-[#14060e] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all glow-ramp"
               >
                 Submit Vote

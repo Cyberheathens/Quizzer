@@ -5,6 +5,7 @@ export interface Room {
   host_name: string;
   passcode: string | null;
   is_active: boolean;
+  status: 'draft' | 'open';
   created_at: string;
 }
 
@@ -14,9 +15,11 @@ export interface Poll {
   question: string;
   poll_type: 'single' | 'multi' | 'rating' | 'open_text';
   options: PollOption[];
-  phase: 'voting_open' | 'voting_locked' | 'results_shown';
+  phase: 'draft' | 'voting_open' | 'voting_locked' | 'results_shown';
   correct_answers: number[];
   timer_seconds: number | null;
+  question_image: string | null;
+  launched_at: string | null;
   created_at: string;
 }
 

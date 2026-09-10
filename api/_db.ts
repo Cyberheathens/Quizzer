@@ -5,6 +5,10 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 export const sql = neon(DATABASE_URL);
 
 export async function initDB() {
+  await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'`;
+  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS question_image TEXT`;
+  await sql`ALTER TABLE polls ADD COLUMN IF NOT EXISTS launched_at TIMESTAMPTZ`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS rooms (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
