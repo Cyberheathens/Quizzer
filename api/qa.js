@@ -44,6 +44,18 @@ export default async function handler(req, res) {
       SELECT * FROM qa_posts WHERE room_id = ${roomId} ORDER BY created_at DESC LIMIT 100
     `;
 
+    const { sessionId } = req.query;
+    let myUpvotes = [];
+    if (sessionId && typeof sessionId === 'string') {
+      const mine = await sql`
+        SELECT v.post_id FROM qa_votes v
+        JOIN qa_posts p ON p.id = v.post_id
+        WHERE p.room_id = ${roomId} AND v.session_id = ${sessionId}
+      `;
+      myUpvotes = mine.map((r) => r.post_id);
+    }
+
+    res.setHeader('X-My-Upvotes', myUpvotes.join(','));
     return res.status(200).json(result);
   }
 
@@ -67,9 +79,20 @@ export default async function handler(req, res) {
       case 'hide':
         result = await sql`UPDATE qa_posts SET is_hidden = NOT is_hidden WHERE id = ${postId} RETURNING *`;
         break;
-      case 'upvote':
-        result = await sql`UPDATE qa_posts SET upvotes = upvotes + 1 WHERE id = ${postId} RETURNING *`;
+      case 'upvote': {
+        const { sessionId } = req.body;
+        if (!sessionId) return res.status(400).json({ error: 'Session ID required for upvoting' });
+        const existingVote = await sql`SELECT 1 FROM qa_votes WHERE post_id = ${postId} AND session_id = ${sessionId}`;
+        if (existingVote.length > 0) {
+          // toggle off
+          await sql`DELETE FROM qa_votes WHERE post_id = ${postId} AND session_id = ${sessionId}`;
+          result = await sql`UPDATE qa_posts SET upvotes = upvotes - 1 WHERE id = ${postId} AND upvotes > 0 RETURNING *`;
+        } else {
+          await sql`INSERT INTO qa_votes (post_id, session_id) VALUES (${postId}, ${sessionId}) ON CONFLICT DO NOTHING`;
+          result = await sql`UPDATE qa_posts SET upvotes = upvotes + 1 WHERE id = ${postId} RETURNING *`;
+        }
         break;
+      }
       default:
         return res.status(400).json({ error: 'Invalid action' });
     }

@@ -64,7 +64,11 @@ export const getQAPosts = (roomId: string) =>
 export const updateQAPost = (data: {
   postId: string;
   action: 'pin' | 'answering' | 'answered' | 'hide' | 'upvote';
+  sessionId?: string;
 }) => fetchJSON<QAPost>(`${BASE}/qa`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const getMyUpvotes = (roomId: string, sessionId: string) =>
+  fetchJSON<{ postIds: string[] }>(`${BASE}/qa-upvotes?roomId=${roomId}&sessionId=${sessionId}`);
 
 export const heartbeatParticipant = (data: {
   roomId: string;

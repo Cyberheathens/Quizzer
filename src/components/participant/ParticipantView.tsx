@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, BarChart3, Cloud, Send, ThumbsUp, User, Eye, EyeOff, Zap, Wifi, WifiOff } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { submitVote, createQAPost, updateQAPost } from '@/lib/api';
+import { filterStopwords } from '@/lib/stopwords';
 import VotingCard from './VotingCard';
 import toast from 'react-hot-toast';
 
 type Tab = 'poll' | 'qa' | 'cloud';
 
 export default function ParticipantView() {
-  const { room, currentPoll, qaPosts, sessionId, displayName, isConnected, participantCount, quizInfo, hasVoted, voteResults } = useStore();
+  const { room, currentPoll, qaPosts, sessionId, displayName, isConnected, participantCount, quizInfo, myUpvotes, hasVoted, voteResults, toggleMyUpvote } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>('poll');
   const [qaText, setQaText] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -53,16 +54,18 @@ export default function ParticipantView() {
   };
 
   const handleUpvote = async (postId: string) => {
+    const wasUpvoted = myUpvotes.includes(postId);
+    toggleMyUpvote(postId);
     try {
-      await updateQAPost({ postId, action: 'upvote' });
+      await updateQAPost({ postId, action: 'upvote', sessionId });
     } catch {
-      // silent
+      toggleMyUpvote(postId);
     }
   };
 
   const wordCloudData = useMemo(() => {
     const allText = qaPosts.map((p) => p.content).join(' ');
-    const words = allText.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    const words = filterStopwords(allText.toLowerCase().split(/\s+/).filter((w) => w.length > 3));
     const freq: Record<string, number> = {};
     words.forEach((w) => {
       freq[w] = (freq[w] || 0) + 1;
@@ -221,8 +224,16 @@ export default function ParticipantView() {
                             onClick={() => handleUpvote(post.id)}
                             className="flex flex-col items-center gap-0.5 min-w-[40px] pt-0.5"
                           >
-                            <ThumbsUp className="w-4 h-4 text-text-muted hover:text-coral transition-colors" />
-                            <span className="text-xs font-bold text-text-secondary">{post.upvotes}</span>
+                            <ThumbsUp
+                              className={`w-4 h-4 transition-colors ${
+                                myUpvotes.includes(post.id)
+                                  ? 'text-coral fill-coral/30'
+                                  : 'text-text-muted hover:text-coral'
+                              }`}
+                            />
+                            <span className={`text-xs font-bold ${myUpvotes.includes(post.id) ? 'text-coral' : 'text-text-secondary'}`}>
+                              {post.upvotes}
+                            </span>
                           </button>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm">{post.content}</p>

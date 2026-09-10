@@ -12,6 +12,7 @@ interface AppStore {
   isConnected: boolean;
   participantCount: number;
   quizInfo: { quiz_id: string; title: string; order_index: number; total: number } | null;
+  myUpvotes: string[];
   hasVoted: Record<string, boolean>;
   voteResults: Record<string, { optionIndex: number; count: number }[]>;
 
@@ -26,6 +27,8 @@ interface AppStore {
   setConnected: (connected: boolean) => void;
   setParticipantCount: (count: number) => void;
   setQuizInfo: (info: { quiz_id: string; title: string; order_index: number; total: number } | null) => void;
+  setMyUpvotes: (ids: string[]) => void;
+  toggleMyUpvote: (postId: string) => void;
   markVoted: (pollId: string) => void;
   setVoteResults: (pollId: string, results: { optionIndex: number; count: number }[]) => void;
   setDisplayName: (name: string) => void;
@@ -42,6 +45,7 @@ export const useStore = create<AppStore>((set) => ({
   isConnected: false,
   participantCount: 0,
   quizInfo: null,
+  myUpvotes: [],
   hasVoted: {},
   voteResults: {},
 
@@ -63,6 +67,8 @@ export const useStore = create<AppStore>((set) => ({
   setConnected: (connected) => set({ isConnected: connected }),
   setParticipantCount: (count) => set({ participantCount: count }),
   setQuizInfo: (quizInfo) => set({ quizInfo }),
+  setMyUpvotes: (myUpvotes) => set({ myUpvotes }),
+  toggleMyUpvote: (postId) => set((s) => ({ myUpvotes: s.myUpvotes.includes(postId) ? s.myUpvotes.filter((id) => id !== postId) : [...s.myUpvotes, postId] })),
   markVoted: (pollId) => set((s) => ({ hasVoted: { ...s.hasVoted, [pollId]: true } })),
   setVoteResults: (pollId, results) =>
     set((s) => ({ voteResults: { ...s.voteResults, [pollId]: results } })),
@@ -76,6 +82,7 @@ export const useStore = create<AppStore>((set) => ({
       isConnected: false,
       participantCount: 0,
       quizInfo: null,
+      myUpvotes: [],
       hasVoted: {},
       voteResults: {},
     }),

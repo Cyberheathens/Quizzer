@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { QRCodeSVG } from 'qrcode.react';
 import { Zap, Users, CheckCircle2, Cloud, MessageSquare, Trophy, BarChart3, Timer } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { filterStopwords } from '@/lib/stopwords';
 import { useParams } from 'react-router-dom';
 
 const COLORS = ['#ff8359', '#f3586c', '#e63e7a', '#ffb86b', '#f973a1', '#d83563', '#ff6b9d', '#c22e57'];
@@ -63,7 +64,7 @@ export default function StageView() {
 
   const wordCloudData = useMemo(() => {
     const allText = qaPosts.map((p) => p.content).join(' ');
-    const words = allText.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    const words = filterStopwords(allText.toLowerCase().split(/\s+/).filter((w) => w.length > 3));
     const freq: Record<string, number> = {};
     words.forEach((w) => { freq[w] = (freq[w] || 0) + 1; });
     return Object.entries(freq)

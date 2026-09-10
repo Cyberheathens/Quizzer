@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getRoom, getPolls, getQAPosts, getVoteResults, getRoomState } from '@/lib/api';
+import { getRoom, getPolls, getQAPosts, getVoteResults, getRoomState, getMyUpvotes } from '@/lib/api';
 import type { Room } from '@/types';
 import { subscribeToRoom, unsubscribeFromRoom } from '@/lib/pusher';
 import { useStore } from '@/store/useStore';
@@ -16,7 +16,7 @@ export default function RoomPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHost = location.pathname.endsWith('/host');
-  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setQuizInfo, setConnected } = useStore();
+  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setQuizInfo, setMyUpvotes, setConnected } = useStore();
   const [loading, setLoading] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
 
@@ -38,6 +38,7 @@ export default function RoomPage() {
 
         setPolls(polls);
         setQAPosts(posts);
+        getMyUpvotes(r.id, sessionId).then((m) => setMyUpvotes(m.postIds)).catch(() => {});
 
         if (!isHost) {
           const joined = localStorage.getItem(`room_${code}_joined`);
