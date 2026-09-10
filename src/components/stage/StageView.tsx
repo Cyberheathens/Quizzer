@@ -273,24 +273,63 @@ export default function StageView() {
                   <h2 className="text-3xl font-bold mb-3">{answeringPost.content}</h2>
                   <p className="text-text-secondary">— {answeringPost.is_anonymous ? 'Anonymous' : answeringPost.display_name}</p>
                 </motion.div>
-              ) : pinnedPost ? (
-                <motion.div
-                  initial={{ y: 20 }}
-                  animate={{ y: 0 }}
-                  className="glass-strong rounded-3xl p-10 text-center glow-ramp"
-                >
-                  <div className="inline-flex p-4 rounded-2xl bg-flame/10 mb-4">
-                    <Trophy className="w-10 h-10 text-flame" />
-                  </div>
-                  <p className="text-xs text-flame font-medium mb-2">PINNED QUESTION</p>
-                  <h2 className="text-3xl font-bold mb-3">{pinnedPost.content}</h2>
-                  <p className="text-text-secondary">— {pinnedPost.is_anonymous ? 'Anonymous' : pinnedPost.display_name}</p>
-                </motion.div>
               ) : (
-                <div className="text-center">
-                  <MessageSquare className="w-16 h-16 text-text-muted mx-auto mb-4" />
-                  <h2 className="text-3xl font-bold mb-2">Live Q&A</h2>
-                  <p className="text-xl text-text-secondary">Questions from the audience will appear here</p>
+                <div>
+                  {pinnedPost && (
+                    <motion.div
+                      initial={{ y: 20 }}
+                      animate={{ y: 0 }}
+                      className="glass-strong rounded-3xl p-8 text-center glow-ramp mb-5"
+                    >
+                      <p className="text-xs text-flame font-medium mb-2">PINNED</p>
+                      <h2 className="text-3xl font-bold mb-2">{pinnedPost.content}</h2>
+                      <p className="text-text-secondary">— {pinnedPost.is_anonymous ? 'Anonymous' : pinnedPost.display_name}</p>
+                    </motion.div>
+                  )}
+
+                  <h2 className="text-xl font-semibold text-text-secondary mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-coral" />
+                    Live questions
+                  </h2>
+                  {(() => {
+                    const stream = qaPosts
+                      .filter((p) => !p.is_hidden && p.id !== pinnedPost?.id)
+                      .sort((a, b) => b.upvotes - a.upvotes || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .slice(0, 5);
+                    if (stream.length === 0) {
+                      return (
+                        <div className="text-center py-10">
+                          <MessageSquare className="w-14 h-14 text-text-muted mx-auto mb-3" />
+                          <p className="text-xl text-text-secondary">No questions yet — scan the QR and ask one!</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2.5">
+                        <AnimatePresence>
+                          {stream.map((post, i) => (
+                            <motion.div
+                              key={post.id}
+                              layout
+                              initial={{ opacity: 0, y: 16 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="glass rounded-2xl px-6 py-4 flex items-center gap-4"
+                            >
+                              <span className="text-2xl font-bold font-mono text-flame w-10">{post.upvotes}</span>
+                              <div className="min-w-0 flex-1 text-left">
+                                <p className="text-lg font-medium truncate">{post.content}</p>
+                                <p className="text-sm text-text-muted">{post.is_anonymous ? 'Anonymous' : post.display_name}</p>
+                              </div>
+                              {post.is_answered && <span className="chip shrink-0">answered</span>}
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        <p className="text-sm text-text-muted text-center pt-2">
+                          Pin or mark "answering" from the Host Console to spotlight a question
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </motion.div>
