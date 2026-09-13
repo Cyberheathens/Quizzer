@@ -9,9 +9,14 @@
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "node --test tests/*.test.cjs",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "verify": "npm run lint && npm run test && npm run check:syntax && npm run build",
     "preview": "vite preview",
     "db:init": "node scripts/init-db.mjs",
-    "prewarm": "node scripts/prewarm.mjs"
+    "prewarm": "node scripts/prewarm.mjs",
+    "simulate-room": "node scripts/simulate-room.mjs",
+    "stress-db": "node scripts/stress-db.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

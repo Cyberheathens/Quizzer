@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   await initDB();
 
   if (req.method === 'POST') {
-    const { name, hostName, passcode } = req.body;
+    const { name, hostName } = req.body;
     if (!name || !hostName) {
       return res.status(400).json({ error: 'Name and host name required' });
     }
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
     const result = await sql`
       INSERT INTO rooms (code, name, host_name, passcode, status)
-      VALUES (${code}, ${name}, ${hostName}, ${passcode || null}, 'draft')
+      VALUES (${code}, ${name}, ${hostName}, ${code}, 'draft')
       RETURNING *
     `;
 

@@ -1,4 +1,4 @@
-import type { Room, Poll, QAPost, QuizSnapshot } from '@/types';
+import type { Room, Poll, QAPost, QuizSnapshot, WordCloud } from '@/types';
 
 const BASE = '/api';
 
@@ -15,7 +15,7 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 // Room APIs
-export const createRoom = (data: { name: string; hostName: string; passcode?: string }) =>
+export const createRoom = (data: { name: string; hostName: string }) =>
   fetchJSON<Room>(`${BASE}/rooms`, { method: 'POST', body: JSON.stringify(data) });
 
 export const getRoom = (code: string) =>
@@ -81,7 +81,22 @@ export const getRoomState = (data: {
   sessionId: string;
   displayName?: string;
   includeDrafts?: boolean;
-}) => fetchJSON<{ participants: number; polls: Poll[]; qa: QAPost[]; quizInfo: { quiz_id: string; title: string; order_index: number; total: number } | null; intervalMs: number }>(`${BASE}/state`, { method: 'POST', body: JSON.stringify(data) });
+}) => fetchJSON<{ participants: number; polls: Poll[]; qa: QAPost[]; quizInfo: { quiz_id: string; title: string; order_index: number; total: number } | null; wordCloud: WordCloud | null; intervalMs: number }>(`${BASE}/state`, { method: 'POST', body: JSON.stringify(data) });
+
+export const getWordClouds = (roomId: string) =>
+  fetchJSON<WordCloud[]>(`${BASE}/word-clouds?roomId=${roomId}`);
+
+export const createWordCloud = (data: { roomId: string; prompt: string; launch?: boolean }) =>
+  fetchJSON<WordCloud>(`${BASE}/word-clouds`, { method: 'POST', body: JSON.stringify(data) });
+
+export const wordCloudAction = (cloudId: string, action: 'launch' | 'lock') =>
+  fetchJSON<WordCloud>(`${BASE}/word-clouds`, { method: 'PATCH', body: JSON.stringify({ cloudId, action }) });
+
+export const deleteWordCloud = (cloudId: string) =>
+  fetchJSON<{ success: boolean }>(`${BASE}/word-clouds?cloudId=${cloudId}`, { method: 'DELETE' });
+
+export const submitWordResponse = (data: { cloudId: string; sessionId: string; text: string }) =>
+  fetchJSON<WordCloud>(`${BASE}/words`, { method: 'POST', body: JSON.stringify(data) });
 
 export const roomAction = (code: string, action: 'open' | 'end') =>
   fetchJSON<Room>(`${BASE}/rooms`, { method: 'PATCH', body: JSON.stringify({ code, action }) });

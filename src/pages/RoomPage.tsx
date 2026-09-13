@@ -16,7 +16,7 @@ export default function RoomPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHost = location.pathname.endsWith('/host');
-  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setQuizInfo, setMyUpvotes, setConnected } = useStore();
+  const { sessionId, displayName, room, setRoom, setPolls, setQAPosts, addPoll, updatePoll, addQAPost, updateQAPost, setVoteResults, setParticipantCount, setQuizInfo, setMyUpvotes, setConnected, setWordCloud } = useStore();
   const [loading, setLoading] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
 
@@ -72,6 +72,7 @@ export default function RoomPage() {
         setQAPosts(s.qa || []);
         setParticipantCount(s.participants);
         setQuizInfo(s.quizInfo ?? null);
+        setWordCloud(s.wordCloud ?? null);
 
         if (s.polls) {
           setPolls(s.polls);
@@ -110,6 +111,7 @@ export default function RoomPage() {
     });
     channel.bind('qa:new', (data: any) => addQAPost(data));
     channel.bind('qa:update', (data: any) => updateQAPost(data));
+    channel.bind('wordcloud:update', (data: any) => setWordCloud(data || null));
     channel.bind('participants', (data: any) => setParticipantCount(data.count));
     channel.bind('room:open', () => {
       toast.success('Room is open!');

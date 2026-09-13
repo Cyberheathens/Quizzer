@@ -2,6 +2,9 @@
 
 # ⚡ Engage
 
+[![CI](https://github.com/Cyberheathens/Quizzer/actions/workflows/ci.yml/badge.svg)](https://github.com/Cyberheathens/Quizzer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Real-time audience engagement platform** — live polls, sequential quizzes, Q&A walls, word clouds.
 
 *Zero signups. Scan a QR. Engage.*
@@ -31,12 +34,13 @@ no account, no friction.
 
 ## Features
 
-- **Frictionless entry** — 6-digit room code or QR scan, zero signup
+- **Frictionless entry** — the QR-visible 6-character room code is also the room password; zero signup
 - **Live polling** — single choice, multi-select, **multi-correct answer keys**, timed countdowns
 - **Sequential quizzes** — build N-question quizzes as drafts, launch Q1, then *you* control the pace: Lock → Reveal → Next
 - **Live leaderboard** — auto-scored against answer keys, streaming on stage
 - **Q&A wall** — upvoting (one vote per person, toggleable), moderation queue, pin / answering / answered / hide
-- **Animated word cloud** — frequency-driven, stopword-filtered, rendered live
+- **Moderated word clouds** — dedicated prompts, draft/live/locked states, server-side normalization, duplicate and profanity protection, realtime frequency aggregation
+- **Stable cloud layout** — deterministic collision-aware placement on participant, host, and projector views
 - **Three view modes** — Participant (mobile), Host Console, Stage Display (projector)
 - **Draft everything** — rooms and quizzes start closed; edit, then open when the audience walks in
 
@@ -54,10 +58,12 @@ graph TB
 
     subgraph Vercel["Vercel (serverless functions, same region as DB)"]
         API["/api/*<br/>rooms · polls · votes<br/>quizzes · qa · state<br/>leaderboard · participants"]
+        WC["word-clouds · words"]
     end
 
     subgraph Data["Neon Postgres (serverless)"]
         DB[("rooms · quizzes · polls<br/>votes · qa_posts · qa_votes<br/>members")]
+        WDB[("word_clouds<br/>word_responses")]
     end
 
     subgraph Pusher["Pusher Channels"]
@@ -69,7 +75,10 @@ graph TB
     S -->|"GET state · leaderboard"| API
     API --> SQL("SQL over HTTPS")
     SQL --> DB
+    WC --> SQL
+    SQL --> WDB
     API -->|"trigger events"| WS
+    WC -->|"wordcloud:update"| WS
     WS -->|"instant updates"| P
     WS -->|"instant updates"| S
     WS -->|"instant updates"| H
@@ -127,9 +136,11 @@ erDiagram
     rooms ||--o{ polls : contains
     rooms ||--o{ qa_posts : moderates
     rooms ||--o{ members : tracks
+    rooms ||--o{ word_clouds : hosts
     quizzes ||--o{ polls : orders
     polls ||--o{ votes : collects
     qa_posts ||--o{ qa_votes : dedups
+    word_clouds ||--o{ word_responses : collects
 
     rooms {
         uuid id PK
@@ -154,6 +165,20 @@ erDiagram
         uuid poll_id FK
         text session_id "device-bound"
         int_arr selected_options
+    }
+    word_clouds {
+        uuid id PK
+        uuid room_id FK
+        text prompt
+        text state "draft | open | locked"
+        timestamptz launched_at
+    }
+    word_responses {
+        uuid id PK
+        uuid cloud_id FK
+        text session_id
+        text text "original display value"
+        text normalized_text "frequency key"
     }
     members {
         uuid room_id PK
@@ -335,15 +360,17 @@ truth per code path**, and always smoke-test the deployed artifact.
 
 ## Run it
 
+Requirements: Node.js 20+, npm, a Neon Postgres database, and optional Pusher
+credentials for instant updates. REST synchronization still works without Pusher.
+
 ```bash
 git clone https://github.com/Cyberheathens/Quizzer.git
 cd Quizzer
-npm install
+npm ci
 
 cp .env.example .env   # fill in Neon + Pusher credentials (below)
 npm run db:init        # create all tables
-npm run dev:server     # API on :3001
-npm run dev            # UI on :5173
+npm run dev:all        # API on :3001 and UI on :5173
 ```
 
 ### Event-day runbook
@@ -363,28 +390,58 @@ npm run simulate-room  # dress rehearsal: 400 fake participants through the full
 
 Set them for **Production + Preview**, deploy, done: `vercel --prod`
 
+### Verification
+
+The default suite is credential-free and is the same command run by CI:
+
+```bash
+npm run verify
+```
+
+It runs Oxlint, Node's built-in unit tests, syntax checks for server files, and a
+production Vite build. Database stress and room simulations are opt-in because
+they create temporary records and require configured services:
+
+```bash
+npm run stress-db
+npm run simulate-room -- 400
+```
+
+GitHub Actions runs verification on every pull request and every push to `main`.
+
+### Contributing and license
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Engage is
+open-source software provided under the [MIT License](LICENSE).
+
 ---
 
 ## Tech stack
 
 **Frontend** React 19 · TypeScript · TailwindCSS 4 · Framer Motion · Recharts · Zustand · qrcode.react
 **Backend** Vercel serverless functions · Neon serverless Postgres (SQL-over-HTTPS) · Pusher Channels
-**Testing** Custom workload simulator · concurrency sweeper · E2E API suites
+**Testing** Node test runner · Oxlint · syntax checks · Vite production build · workload simulator · GitHub Actions
 
 ## Project structure
 
 ```
 api/            # serverless functions (ESM .js + .cjs helpers)
-  rooms.cjs     # shared DB schema + Pusher wrapper
+  _db.cjs       # shared database schema
+  _pusher.cjs   # realtime wrapper with graceful REST fallback
   state.js      # single-query client sync (the performance-critical path)
   quizzes.js    # sequential quiz engine (launch/lock/reveal/next)
+  word-clouds.js# host lifecycle: draft, launch, lock, delete
+  words.js      # participant submission and aggregate snapshots
   leaderboard.js
 src/
   pages/        # Landing · CreateRoom · Room (routes to the 3 views)
   components/
-    participant/# voting card w/ countdown, Q&A, word cloud
-    presenter/  # host console: poll + quiz builders, moderation
+    participant/# voting card w/ countdown and Q&A
+    presenter/  # host console: poll + quiz builders and moderation
     stage/      # projector view: charts, QR, leaderboard, question stream
+    wordcloud/  # host, participant, and collision-aware display components
+tests/          # credential-free Node unit tests
+.github/        # pull-request and main-branch CI
 scripts/        # prewarm · init-db · stress-db · simulate-room
 ```
 

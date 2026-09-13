@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Zap } from 'lucide-react';
+import { User } from 'lucide-react';
 import { joinRoom } from '@/lib/api';
 import { useStore } from '@/store/useStore';
 import { setDisplayName as saveDisplayName } from '@/lib/utils';
@@ -13,7 +13,6 @@ interface JoinDialogProps {
 
 export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
   const [name, setName] = useState('');
-  const [passcode, setPasscode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const { sessionId, setDisplayName } = useStore();
 
@@ -26,7 +25,7 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
     try {
       await joinRoom({
         code: roomCode,
-        passcode: passcode.trim() || undefined,
+        passcode: roomCode.toUpperCase(),
         sessionId,
         displayName: name.trim(),
       });
@@ -51,7 +50,8 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
       >
         <img src="/logo/logo-mark.svg" alt="Cyberheathens" className="w-10 h-10 mb-4" />
         <h2 className="text-2xl font-bold mb-1">Join Room</h2>
-        <p className="text-text-muted text-sm font-mono mb-6">{roomCode}</p>
+        <p className="text-text-muted text-sm mb-1">Room password</p>
+        <p className="text-ramp text-lg tracking-[0.2em] font-mono font-bold mb-6">{roomCode}</p>
 
         <div className="space-y-3 text-left">
           <div>
@@ -68,19 +68,6 @@ export default function JoinDialog({ roomCode, onJoined }: JoinDialogProps) {
                 autoFocus
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Passcode <span className="text-text-muted">(if required)</span>
-            </label>
-            <input
-              type="password"
-              placeholder="Room passcode"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
-            />
           </div>
         </div>
 

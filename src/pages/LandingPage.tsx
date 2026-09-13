@@ -12,7 +12,7 @@ export default function LandingPage() {
 
   const handleJoin = async () => {
     if (code.length !== 6) {
-      toast.error('Enter a 6-digit room code');
+      toast.error('Enter the 6-character room password');
       return;
     }
     setIsJoining(true);
@@ -29,7 +29,7 @@ export default function LandingPage() {
   const features = [
     { icon: BarChart3, label: 'Live Polling', desc: 'Real-time voting with instant results', color: 'text-coral' },
     { icon: MessageSquare, label: 'Q&A Text Wall', desc: 'Audience questions with upvoting', color: 'text-flame' },
-    { icon: Users, label: 'Zero Signup', desc: 'Join instantly with 6-digit code', color: 'text-magenta' },
+    { icon: Users, label: 'Zero Signup', desc: 'Join instantly with a room password', color: 'text-magenta' },
     { icon: Zap, label: 'Sub-150ms Sync', desc: 'Lightning-fast real-time updates', color: 'text-ok' },
   ];
 
@@ -102,7 +102,7 @@ export default function LandingPage() {
               <QrCode className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
               <input
                 type="text"
-                placeholder="Enter 6-digit code"
+                placeholder="Enter room password"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoin()}

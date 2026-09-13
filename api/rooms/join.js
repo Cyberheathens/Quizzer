@@ -23,8 +23,9 @@ export default async function handler(req, res) {
     if (room.status && room.status !== 'open') {
       return res.status(403).json({ error: 'Room not open yet' });
     }
-    if (room.passcode && room.passcode !== passcode) {
-      return res.status(403).json({ error: 'Invalid passcode' });
+    const matchesRoomPassword = typeof passcode === 'string' && passcode.toUpperCase() === room.code;
+    if (room.passcode && !matchesRoomPassword && room.passcode !== passcode) {
+      return res.status(403).json({ error: 'Invalid room password' });
     }
 
     await sql`

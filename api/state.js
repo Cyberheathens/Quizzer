@@ -47,8 +47,28 @@ export default async function handler(req, res) {
           WHERE p.room_id = ${roomId} AND p.phase = 'voting_open'
           LIMIT 1
         ) qz_info
+      ),
+      wc AS (
+        SELECT row_to_json(cloud_info) AS info FROM (
+          SELECT c.id, c.room_id, c.prompt, c.state, c.launched_at, c.created_at,
+            COALESCE((
+              SELECT json_agg(word_row) FROM (
+                SELECT normalized_text AS text, count(*)::int AS value
+                FROM word_responses WHERE cloud_id = c.id
+                GROUP BY normalized_text ORDER BY value DESC, normalized_text ASC LIMIT 60
+              ) word_row
+            ), '[]'::json) AS words,
+            (SELECT count(*)::int FROM word_responses WHERE cloud_id = c.id) AS response_count,
+            (SELECT count(DISTINCT session_id)::int FROM word_responses WHERE cloud_id = c.id) AS contributor_count
+          FROM word_clouds c
+          WHERE c.room_id = ${roomId} AND c.state IN ('open', 'locked')
+          ORDER BY (c.state = 'open') DESC, c.launched_at DESC NULLS LAST, c.created_at DESC
+          LIMIT 1
+        ) cloud_info
       )
-      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open, qz.info AS quiz_info FROM cnt, pls, qs, op LEFT JOIN qz ON true
+      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open,
+        qz.info AS quiz_info, wc.info AS word_cloud
+      FROM cnt, pls, qs, op LEFT JOIN qz ON true LEFT JOIN wc ON true
     `;
 
     const r = rows[0];
@@ -57,6 +77,7 @@ export default async function handler(req, res) {
       polls: r.polls,
       qa: r.qa,
       quizInfo: r.quiz_info,
+      wordCloud: r.word_cloud,
       intervalMs: intervalFor(r.participants, r.has_open),
     });
   }

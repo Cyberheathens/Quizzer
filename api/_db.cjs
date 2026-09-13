@@ -65,6 +65,33 @@ exports.initDB = async function initDB() {
     )
   `;
 
+  await exports.sql`
+    CREATE TABLE IF NOT EXISTS word_clouds (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+      prompt TEXT NOT NULL,
+      state VARCHAR(20) NOT NULL DEFAULT 'draft',
+      launched_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+
+  await exports.sql`
+    CREATE TABLE IF NOT EXISTS word_responses (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      cloud_id UUID REFERENCES word_clouds(id) ON DELETE CASCADE,
+      session_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(cloud_id, session_id, normalized_text)
+    )
+  `;
+  await exports.sql`
+    CREATE INDEX IF NOT EXISTS word_responses_cloud_created_idx
+    ON word_responses(cloud_id, created_at DESC)
+  `;
+
   await exports.sql`CREATE TABLE IF NOT EXISTS quizzes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,

@@ -53,6 +53,23 @@ export interface QAPost {
   created_at: string;
 }
 
+export interface WordCloudWord {
+  text: string;
+  value: number;
+}
+
+export interface WordCloud {
+  id: string;
+  room_id: string;
+  prompt: string;
+  state: 'draft' | 'open' | 'locked';
+  launched_at: string | null;
+  created_at: string;
+  words: WordCloudWord[];
+  response_count: number;
+  contributor_count: number;
+}
+
 export interface QuizInfo {
   quiz_id: string;
   title: string;
@@ -75,4 +92,5 @@ export interface RoomState {
   displayName: string;
   isConnected: boolean;
   participantCount: number;
+  wordCloud: WordCloud | null;
 }

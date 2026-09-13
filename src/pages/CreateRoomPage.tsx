@@ -10,7 +10,6 @@ export default function CreateRoomPage() {
   const navigate = useNavigate();
   const [roomName, setRoomName] = useState('');
   const [hostName, setHostName] = useState('');
-  const [passcode, setPasscode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createdRoom, setCreatedRoom] = useState<{ code: string; name: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -25,7 +24,6 @@ export default function CreateRoomPage() {
       const room = await createRoom({
         name: roomName.trim(),
         hostName: hostName.trim(),
-        passcode: passcode.trim() || undefined,
       });
       localStorage.setItem(`room_${room.code}_host`, 'true');
       setCreatedRoom({ code: room.code, name: room.name });
@@ -66,6 +64,7 @@ export default function CreateRoomPage() {
             <QRCodeSVG value={roomUrl} size={180} bgColor="#ffffff" fgColor="#0a0a0f" />
           </div>
 
+          <p className="text-xs font-medium uppercase tracking-wider text-text-muted mb-2">Room password</p>
           <div className="flex items-center justify-center gap-2 mb-6">
             <span className="text-4xl font-mono font-bold tracking-[0.3em] text-ramp">
               {createdRoom.code}
@@ -80,7 +79,7 @@ export default function CreateRoomPage() {
               onClick={async () => {
                 try {
                   await roomAction(createdRoom.code, 'open');
-                  toast.success('Room is open — share the code!');
+                  toast.success('Room is open — share the password!');
                   navigate(`/room/${createdRoom.code}/host`);
                 } catch (err: any) {
                   toast.error(err.message || 'Failed to open');
@@ -153,18 +152,9 @@ export default function CreateRoomPage() {
               className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              Passcode <span className="text-text-muted">(optional)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Optional room passcode"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl glass-strong text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-coral/50 transition-all"
-            />
-          </div>
+          <p className="rounded-xl bg-bg-secondary/60 px-4 py-3 text-sm text-text-muted">
+            A unique six-character room password will be generated automatically.
+          </p>
         </div>
 
         <button

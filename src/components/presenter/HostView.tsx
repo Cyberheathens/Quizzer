@@ -4,14 +4,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Plus, Play, Eye, EyeOff, Pin, CheckCircle2, MessageSquare,
   BarChart3, Users, Settings, Trash2, ArrowLeft, Monitor, Copy, Check, Trophy,
-  Timer, XCircle, ImageIcon, Rocket, Lock, Pencil, DoorOpen, DoorClosed,
+  Timer, XCircle, ImageIcon, Rocket, Lock, Pencil, DoorOpen, DoorClosed, Cloud,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { createPoll, updatePollPhase, updateQAPost, launchPoll, updateDraftPoll, deletePoll, roomAction, createQuiz, updateQuiz, getQuizzes, quizAction } from '@/lib/api';
 import type { QuizSnapshot } from '@/types';
 import toast from 'react-hot-toast';
+import WordCloudHost from '@/components/wordcloud/WordCloudHost';
 
-type HostTab = 'polls' | 'quiz' | 'qa' | 'settings';
+type HostTab = 'polls' | 'quiz' | 'cloud' | 'qa' | 'settings';
 
 interface DraftForm {
   id: string | null;
@@ -36,7 +37,7 @@ const EMPTY_FORM: DraftForm = {
 export default function HostView() {
   const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
-  const { room, setRoom, polls, qaPosts, participantCount } = useStore();
+  const { room, setRoom, polls, qaPosts, participantCount, wordCloud, setWordCloud } = useStore();
   const [activeTab, setActiveTab] = useState<HostTab>('polls');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<DraftForm>(EMPTY_FORM);
@@ -283,6 +284,7 @@ export default function HostView() {
     { key: 'polls', label: 'Polls', icon: BarChart3, count: live.filter((p) => !p.quiz_id).length },
     { key: 'quiz', label: 'Quiz', icon: Trophy },
     { key: 'qa', label: 'Q&A', icon: MessageSquare, count: qaPosts.length },
+    { key: 'cloud', label: 'Cloud', icon: Cloud },
     { key: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -842,6 +844,12 @@ export default function HostView() {
                   })
                 )}
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'cloud' && room && (
+            <motion.div key="cloud" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <WordCloudHost roomId={room.id} activeCloud={wordCloud} onUpdate={setWordCloud} />
             </motion.div>
           )}
 

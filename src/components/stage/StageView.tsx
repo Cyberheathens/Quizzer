@@ -1,17 +1,17 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
 import { Zap, Users, CheckCircle2, Cloud, MessageSquare, Trophy, BarChart3, Timer } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { filterStopwords } from '@/lib/stopwords';
 import { useParams } from 'react-router-dom';
+import WordCloudDisplay from '@/components/wordcloud/WordCloudDisplay';
 
 const COLORS = ['#ff8359', '#f3586c', '#e63e7a', '#ffb86b', '#f973a1', '#d83563', '#ff6b9d', '#c22e57'];
 
 export default function StageView() {
   const { code } = useParams<{ code: string }>();
-  const { room, currentPoll, qaPosts, participantCount, quizInfo, voteResults } = useStore();
+  const { room, currentPoll, qaPosts, participantCount, quizInfo, voteResults, wordCloud } = useStore();
   const [view, setView] = useState<'poll' | 'qa' | 'cloud' | 'qr' | 'board'>('qr');
   const [board, setBoard] = useState<{ leaderboard: { name: string; score: number }[]; totalQuestions: number; _quizId?: string } | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -62,21 +62,13 @@ export default function StageView() {
   const pinnedPost = qaPosts.find((p) => p.is_pinned && !p.is_hidden);
   const answeringPost = qaPosts.find((p) => p.is_answering && !p.is_hidden);
 
-  const wordCloudData = useMemo(() => {
-    const allText = qaPosts.map((p) => p.content).join(' ');
-    const words = filterStopwords(allText.toLowerCase().split(/\s+/).filter((w) => w.length > 3));
-    const freq: Record<string, number> = {};
-    words.forEach((w) => { freq[w] = (freq[w] || 0) + 1; });
-    return Object.entries(freq)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 50)
-      .map(([word, count]) => ({ word, count }));
-  }, [qaPosts]);
 
   const roomUrl = `${window.location.origin}/room/${code}`;
 
   // Auto-switch to poll view when there's an active poll
-  const effectiveView = currentPoll && currentPoll.phase !== 'results_shown' && view === 'qr' ? 'poll' : view;
+  const effectiveView = view === 'qr' && currentPoll && currentPoll.phase !== 'results_shown'
+    ? 'poll'
+    : view === 'qr' && wordCloud?.state === 'open' ? 'cloud' : view;
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-primary">
@@ -152,10 +144,10 @@ export default function StageView() {
                 </div>
 
               <h2 className="text-5xl font-bold mb-3">
-                Join with code: <span className="text-ramp font-mono tracking-[0.2em]">{code}</span>
+                Room password: <span className="text-ramp font-mono tracking-[0.2em]">{code}</span>
               </h2>
               <p className="text-xl text-text-secondary mb-6">
-                Scan QR code or visit <span className="font-mono text-flame">{window.location.host}/room/{code}</span>
+                Scan the QR code or enter the password at <span className="font-mono text-flame">{window.location.host}</span>
               </p>
 
               <div className="flex items-center justify-center gap-3 text-text-muted">
@@ -343,33 +335,15 @@ export default function StageView() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="w-full max-w-4xl"
             >
-              {wordCloudData.length > 0 ? (
-                <div className="glass rounded-3xl p-12 min-h-[400px] flex flex-wrap items-center justify-center gap-4">
-                  {wordCloudData.map(({ word, count }, i) => {
-                    const maxCount = wordCloudData[0].count;
-                    const size = 1 + (count / maxCount) * 3.5;
-                    const colors = ['text-coral', 'text-flame', 'text-magenta', 'text-ok', 'text-amber'];
-                    return (
-                      <motion.span
-                        key={word}
-                        initial={{ scale: 0, rotate: Math.random() * 20 - 10 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ delay: i * 0.03, type: 'spring' }}
-                        className={`${colors[i % colors.length]} font-bold`}
-                        style={{ fontSize: `${size}rem` }}
-                      >
-                        {word}
-                      </motion.span>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center">
-                  <Cloud className="w-16 h-16 text-text-muted mx-auto mb-4" />
-                  <h2 className="text-3xl font-bold mb-2">Word Cloud</h2>
-                  <p className="text-xl text-text-secondary">Words from audience questions will form here</p>
-                </div>
-              )}
+              <div className="mb-6 text-center">
+                <span className={`mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${wordCloud?.state === 'open' ? 'bg-ok/15 text-ok' : 'bg-amber/15 text-amber'}`}>
+                  <span className={`h-2 w-2 rounded-full ${wordCloud?.state === 'open' ? 'animate-pulse bg-ok' : 'bg-amber'}`} />
+                  {wordCloud?.state === 'open' ? 'Live responses' : 'Final cloud'}
+                </span>
+                <h2 className="text-4xl font-bold">{wordCloud?.prompt || 'Word Cloud'}</h2>
+              </div>
+              <WordCloudDisplay words={wordCloud?.words || []} emptyMessage="Waiting for the first audience response…" />
+              {wordCloud && <p className="mt-4 text-center text-sm text-text-muted">{wordCloud.response_count} responses · {wordCloud.contributor_count} contributors</p>}
             </motion.div>
           )}
 

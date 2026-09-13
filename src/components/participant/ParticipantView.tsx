@@ -1,16 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, BarChart3, Cloud, Send, ThumbsUp, User, Eye, EyeOff, Zap, Wifi, WifiOff } from 'lucide-react';
+import { MessageSquare, BarChart3, Cloud, Send, ThumbsUp, Eye, EyeOff, Wifi, WifiOff } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { submitVote, createQAPost, updateQAPost } from '@/lib/api';
-import { filterStopwords } from '@/lib/stopwords';
 import VotingCard from './VotingCard';
+import WordCloudParticipant from '@/components/wordcloud/WordCloudParticipant';
 import toast from 'react-hot-toast';
 
 type Tab = 'poll' | 'qa' | 'cloud';
 
 export default function ParticipantView() {
-  const { room, currentPoll, qaPosts, sessionId, displayName, isConnected, participantCount, quizInfo, myUpvotes, hasVoted, voteResults, toggleMyUpvote } = useStore();
+  const { room, currentPoll, qaPosts, sessionId, displayName, isConnected, participantCount, quizInfo, myUpvotes, hasVoted, voteResults, toggleMyUpvote, wordCloud, setWordCloud } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>('poll');
   const [qaText, setQaText] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -63,18 +63,6 @@ export default function ParticipantView() {
     }
   };
 
-  const wordCloudData = useMemo(() => {
-    const allText = qaPosts.map((p) => p.content).join(' ');
-    const words = filterStopwords(allText.toLowerCase().split(/\s+/).filter((w) => w.length > 3));
-    const freq: Record<string, number> = {};
-    words.forEach((w) => {
-      freq[w] = (freq[w] || 0) + 1;
-    });
-    return Object.entries(freq)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 40)
-      .map(([word, count]) => ({ word, count }));
-  }, [qaPosts]);
 
   const voted = currentPoll ? hasVoted[currentPoll.id] : false;
   const results = currentPoll ? voteResults[currentPoll.id] : undefined;
@@ -262,32 +250,7 @@ export default function ParticipantView() {
 
           {activeTab === 'cloud' && (
             <motion.div key="cloud" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-              {wordCloudData.length > 0 ? (
-                <div className="glass rounded-2xl p-6 min-h-[300px] flex flex-wrap items-center justify-center gap-3">
-                  {wordCloudData.map(({ word, count }, i) => {
-                    const maxCount = wordCloudData[0].count;
-                    const size = 0.75 + (count / maxCount) * 2;
-                    const colors = ['text-coral', 'text-flame', 'text-magenta', 'text-ok', 'text-amber'];
-                    return (
-                      <motion.span
-                        key={word}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: i * 0.03 }}
-                        className={`${colors[i % colors.length]} font-bold`}
-                        style={{ fontSize: `${size}rem` }}
-                      >
-                        {word}
-                      </motion.span>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-20">
-                  <Cloud className="w-12 h-12 text-text-muted mx-auto mb-3" />
-                  <p className="text-text-secondary">Word cloud will appear as questions come in</p>
-                </div>
-              )}
+              <WordCloudParticipant cloud={wordCloud} sessionId={sessionId} onUpdate={setWordCloud} />
             </motion.div>
           )}
         </AnimatePresence>

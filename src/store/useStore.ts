@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Room, Poll, QAPost } from '@/types';
+import type { Room, Poll, QAPost, WordCloud } from '@/types';
 import { getSessionId, getDisplayName } from '@/lib/utils';
 
 interface AppStore {
@@ -15,6 +15,7 @@ interface AppStore {
   myUpvotes: string[];
   hasVoted: Record<string, boolean>;
   voteResults: Record<string, { optionIndex: number; count: number }[]>;
+  wordCloud: WordCloud | null;
 
   setRoom: (room: Room | null) => void;
   setPolls: (polls: Poll[]) => void;
@@ -32,6 +33,7 @@ interface AppStore {
   markVoted: (pollId: string) => void;
   setVoteResults: (pollId: string, results: { optionIndex: number; count: number }[]) => void;
   setDisplayName: (name: string) => void;
+  setWordCloud: (cloud: WordCloud | null) => void;
   reset: () => void;
 }
 
@@ -48,6 +50,7 @@ export const useStore = create<AppStore>((set) => ({
   myUpvotes: [],
   hasVoted: {},
   voteResults: {},
+  wordCloud: null,
 
   setRoom: (room) => set({ room }),
   setPolls: (polls) => set({ polls }),
@@ -73,6 +76,7 @@ export const useStore = create<AppStore>((set) => ({
   setVoteResults: (pollId, results) =>
     set((s) => ({ voteResults: { ...s.voteResults, [pollId]: results } })),
   setDisplayName: (name) => set({ displayName: name }),
+  setWordCloud: (wordCloud) => set({ wordCloud }),
   reset: () =>
     set({
       room: null,
@@ -85,5 +89,6 @@ export const useStore = create<AppStore>((set) => ({
       myUpvotes: [],
       hasVoted: {},
       voteResults: {},
+      wordCloud: null,
     }),
 }));

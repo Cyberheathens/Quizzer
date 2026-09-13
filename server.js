@@ -4,6 +4,8 @@ import express from 'express';
 import cors from 'cors';
 import { neon } from '@neondatabase/serverless';
 import Pusher from 'pusher';
+import wordCloudHandler from './api/word-clouds.js';
+import wordsHandler from './api/words.js';
 
 // Force IPv4 DNS resolution — campus networks often block IPv6.
 setGlobalDispatcher(new Agent({ connect: { family: 4 } }));
@@ -83,6 +85,24 @@ async function initDB() {
     is_hidden BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT now()
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS word_clouds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+    prompt TEXT NOT NULL,
+    state VARCHAR(20) DEFAULT 'draft',
+    launched_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now()
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS word_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cloud_id UUID REFERENCES word_clouds(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    normalized_text TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(cloud_id, session_id, normalized_text)
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS word_responses_cloud_created_idx ON word_responses(cloud_id, created_at DESC)`;
 }
 
 // Initialize DB on startup
@@ -101,10 +121,10 @@ app.get('/api/rooms', async (req, res) => {
 
 app.post('/api/rooms', async (req, res) => {
   try {
-    const { name, hostName, passcode } = req.body;
+    const { name, hostName } = req.body;
     if (!name || !hostName) return res.status(400).json({ error: 'Name and host name required' });
     let code = generateCode();
-    const result = await sql`INSERT INTO rooms (code, name, host_name, passcode, status) VALUES (${code}, ${name}, ${hostName}, ${passcode || null}, 'draft') RETURNING *`;
+    const result = await sql`INSERT INTO rooms (code, name, host_name, passcode, status) VALUES (${code}, ${name}, ${hostName}, ${code}, 'draft') RETURNING *`;
     res.status(201).json(result[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -137,7 +157,8 @@ app.post('/api/rooms/join', async (req, res) => {
     if (rooms.length === 0) return res.status(404).json({ error: 'Room not found' });
     const room = rooms[0];
     if (room.status && room.status !== 'open') return res.status(403).json({ error: 'Room not open yet' });
-    if (room.passcode && room.passcode !== passcode) return res.status(403).json({ error: 'Invalid passcode' });
+    const matchesRoomPassword = typeof passcode === 'string' && passcode.toUpperCase() === room.code;
+    if (room.passcode && !matchesRoomPassword && room.passcode !== passcode) return res.status(403).json({ error: 'Invalid room password' });
     await sql`INSERT INTO members (room_id, session_id, display_name) VALUES (${room.id}, ${sessionId}, ${displayName || 'Anonymous'}) ON CONFLICT (room_id, session_id) DO UPDATE SET last_seen = now()`;
     const counts = await sql`SELECT count(*)::int AS count FROM members WHERE room_id = ${room.id} AND last_seen > now() - interval '5 minutes'`;
     await fire(`room-${room.code}`, 'participants', { count: counts[0].count });
@@ -355,6 +376,9 @@ app.post('/api/participants', async (req, res) => {
 });
 const intervalFor = (count) => (count > 150 ? 30000 : 2500);
 
+app.all('/api/word-clouds', wordCloudHandler);
+app.all('/api/words', wordsHandler);
+
 // Room state — single query: heartbeat + counts + polls + qa
 app.post('/api/state', async (req, res) => {
   try {
@@ -371,12 +395,13 @@ app.post('/api/state', async (req, res) => {
       pls AS (SELECT COALESCE(json_agg(pl), '[]'::json) AS polls FROM (SELECT * FROM polls WHERE room_id = ${roomId} AND phase != 'draft' ORDER BY created_at DESC LIMIT 20) pl),
       qs AS (SELECT COALESCE(json_agg(q), '[]'::json) AS qa FROM (SELECT * FROM qa_posts WHERE room_id = ${roomId} ORDER BY created_at DESC LIMIT 100) q),
       op AS (SELECT EXISTS(SELECT 1 FROM polls WHERE room_id = ${roomId} AND phase = 'voting_open') AS has_open),
-      qz AS (SELECT row_to_json(qz_info) AS info FROM (SELECT q.id AS quiz_id, q.title, p.order_index, (SELECT count(*)::int FROM polls WHERE quiz_id = q.id) AS total FROM polls p JOIN quizzes q ON q.id = p.quiz_id WHERE p.room_id = ${roomId} AND p.phase = 'voting_open' LIMIT 1) qz_info)
-      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open, qz.info AS quiz_info FROM cnt, pls, qs, op LEFT JOIN qz ON true
+      qz AS (SELECT row_to_json(qz_info) AS info FROM (SELECT q.id AS quiz_id, q.title, p.order_index, (SELECT count(*)::int FROM polls WHERE quiz_id = q.id) AS total FROM polls p JOIN quizzes q ON q.id = p.quiz_id WHERE p.room_id = ${roomId} AND p.phase = 'voting_open' LIMIT 1) qz_info),
+      wc AS (SELECT row_to_json(cloud_info) AS info FROM (SELECT c.id, c.room_id, c.prompt, c.state, c.launched_at, c.created_at, COALESCE((SELECT json_agg(word_row) FROM (SELECT normalized_text AS text, count(*)::int AS value FROM word_responses WHERE cloud_id = c.id GROUP BY normalized_text ORDER BY value DESC, normalized_text ASC LIMIT 60) word_row), '[]'::json) AS words, (SELECT count(*)::int FROM word_responses WHERE cloud_id = c.id) AS response_count, (SELECT count(DISTINCT session_id)::int FROM word_responses WHERE cloud_id = c.id) AS contributor_count FROM word_clouds c WHERE c.room_id = ${roomId} AND c.state IN ('open', 'locked') ORDER BY (c.state = 'open') DESC, c.launched_at DESC NULLS LAST, c.created_at DESC LIMIT 1) cloud_info)
+      SELECT cnt.count AS participants, pls.polls AS polls, qs.qa AS qa, op.has_open AS has_open, qz.info AS quiz_info, wc.info AS word_cloud FROM cnt, pls, qs, op LEFT JOIN qz ON true LEFT JOIN wc ON true
     `;
     const r = rows[0];
     const intervalMs = r.has_open ? 5000 : (r.participants > 150 ? 30000 : 2500);
-    res.json({ participants: r.participants, polls: r.polls, qa: r.qa, quizInfo: r.quiz_info, intervalMs });
+    res.json({ participants: r.participants, polls: r.polls, qa: r.qa, quizInfo: r.quiz_info, wordCloud: r.word_cloud, intervalMs });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

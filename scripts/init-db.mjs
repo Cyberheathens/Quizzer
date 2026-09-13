@@ -29,6 +29,27 @@ await sql`CREATE TABLE IF NOT EXISTS qa_votes (
     PRIMARY KEY (post_id, session_id)
   )`;
 await sql`CREATE TABLE IF NOT EXISTS members (room_id UUID REFERENCES rooms(id) ON DELETE CASCADE, session_id TEXT NOT NULL, display_name TEXT DEFAULT 'Anonymous', last_seen TIMESTAMPTZ DEFAULT now(), PRIMARY KEY (room_id, session_id))`;
+await sql`CREATE TABLE IF NOT EXISTS word_clouds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+    prompt TEXT NOT NULL,
+    state VARCHAR(20) NOT NULL DEFAULT 'draft',
+    launched_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now()
+  )`;
+await sql`CREATE TABLE IF NOT EXISTS word_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cloud_id UUID REFERENCES word_clouds(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    normalized_text TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(cloud_id, session_id, normalized_text)
+  )`;
+await sql`
+  CREATE INDEX IF NOT EXISTS word_responses_cloud_created_idx
+  ON word_responses(cloud_id, created_at DESC)
+`;
 
 const t = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema='public'`;
 console.log('DB ready. Tables:', t.map(r => r.table_name).join(', '));
